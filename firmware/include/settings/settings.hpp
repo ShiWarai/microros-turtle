@@ -100,20 +100,10 @@ SETTING_INFO {#NAME, #TYPE, REBOOT_IS_REQUIRED, INPUT_VALIDATOR},
 // Определяем поля структуры (тип, название настройки)
 #define SETTINGS_FIELDS(TYPE_AND_NAME, ...) \
     TYPE_AND_NAME(String, access_key, false, NULL, __VA_ARGS__) \
-    TYPE_AND_NAME(float, shunt_mult_res, true, NULL, __VA_ARGS__) \
-    TYPE_AND_NAME(uint32_t, sensor_delay, false, validate_uint, __VA_ARGS__) \
-    TYPE_AND_NAME(uint32_t, usb_delay, false, validate_uint, __VA_ARGS__) \
     TYPE_AND_NAME(uint32_t, wireless_delay, false, validate_uint, __VA_ARGS__) \
-    TYPE_AND_NAME(uint32_t, display_time, false, validate_uint, __VA_ARGS__) \
     TYPE_AND_NAME(String, hostname, false, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(String, wifi_ssid, true, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(String, wifi_password, true, NULL, __VA_ARGS__) \
-    TYPE_AND_NAME(uint32_t, wifi_mode, true, validate_uint, __VA_ARGS__) \
-    TYPE_AND_NAME(uint32_t, mode, true, validate_uint, __VA_ARGS__) \
-    TYPE_AND_NAME(String, influxdb_url, true, NULL, __VA_ARGS__) \
-    TYPE_AND_NAME(String, influxdb_org, true, NULL, __VA_ARGS__) \
-    TYPE_AND_NAME(String, influxdb_bucket, true, NULL, __VA_ARGS__) \
-    TYPE_AND_NAME(String, influxdb_token, true, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(uint32_t, turtle_id, true, validate_id, __VA_ARGS__) 
 
 // Генерируем структуру и enum

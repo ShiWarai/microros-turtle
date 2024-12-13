@@ -4,9 +4,6 @@ usbipd attach --wsl --busid 2-3
 // Для проброса портов
 
 New-NetIPAddress -InterfaceAlias "vEthernet (WSL (Hyper-V firewall))" -IPAddress 192.168.100.1 -PrefixLength 24
-
 New-NetNat -Name "WSL-NAT" -InternalIPInterfaceAddressPrefix 192.168.100.0/24
-
-Add-NetNatStaticMapping -NatName "WSL-NAT" -Protocol UDP -ExternalIPAddress 0.0.0.0/0 -ExternalPort 8888 -InternalIPAddress 192.168.100.2 -InternalPort 8888
-
+Add-NetNatStaticMapping -NatName "WSL-NAT" -Protocol UDP -ExternalIPAddress 0.0.0.0/0 -ExternalPort 8888 -InternalIPAddress 192.168.100.3 -InternalPort 8888
 wsl -u root ip address add 192.168.100.2/24 dev eth0

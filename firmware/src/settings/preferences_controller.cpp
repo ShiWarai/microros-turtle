@@ -12,6 +12,7 @@ void PreferencesController::preferencesTask(void *pvParameters) {
 	settings.wifi_password = WIFI_PASSWORD;
 	settings.wifi_ssid = WIFI_SSID;
 	settings.wireless_delay = 1000 / portTICK_PERIOD_MS;
+	settings.access_key = ACCESS_KEY;
 
 	DECLARE_SETTING_TYPES_LINKS_VARIANT(UNIQUE_SETTINGS_TYPES) setting;
 	void* buffer;
