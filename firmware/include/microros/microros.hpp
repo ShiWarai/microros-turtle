@@ -12,6 +12,8 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 
+#include "settings/settings.hpp"
+
 class MicroRosController
 {
 public:

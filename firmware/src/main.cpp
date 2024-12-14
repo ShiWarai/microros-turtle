@@ -5,8 +5,8 @@ void setup()
 	WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // Отключение детекции падения тока
 	Serial.begin(CONFIG_CONSOLE_UART_BAUDRATE); // Временно до появление логов
 
-	nvs_flash_erase(); 
-    nvs_flash_init(); 
+	// nvs_flash_erase(); 
+    // nvs_flash_init(); 
 
 	xTaskCreate(PreferencesController::preferencesTask, "Preferences task", 4096, NULL, 1, NULL);
 

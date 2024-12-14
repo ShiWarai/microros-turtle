@@ -73,8 +73,11 @@ void MicroRosController::onOTAEnd(bool success) {
 
 void MicroRosController::microrosTask(void *pvParameters)
 {
+	IPAddress agent_ip_address = IPAddress();
+	agent_ip_address.fromString(settings.agent_ip);
+
 	#ifdef AGENT_IP
-		set_microros_wifi_transports(WIFI_SSID, WIFI_PASSWORD, IPAddress(AGENT_IP), AGENT_PORT);
+		set_microros_wifi_transports(WIFI_SSID, WIFI_PASSWORD, agent_ip_address, AGENT_PORT);
 	#else
 		set_microros_wifi_transports(WIFI_SSID, WIFI_PASSWORD, getIPAddressByHostname(AGENT_HOSTNAME), AGENT_PORT);
 	#endif

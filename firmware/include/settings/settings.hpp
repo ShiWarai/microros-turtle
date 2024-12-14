@@ -104,6 +104,8 @@ SETTING_INFO {#NAME, #TYPE, REBOOT_IS_REQUIRED, INPUT_VALIDATOR},
     TYPE_AND_NAME(String, hostname, false, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(String, wifi_ssid, true, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(String, wifi_password, true, NULL, __VA_ARGS__) \
+    TYPE_AND_NAME(String, agent_ip, true, NULL, __VA_ARGS__) \
+    TYPE_AND_NAME(uint32_t, agent_port, true, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(uint32_t, turtle_id, true, validate_id, __VA_ARGS__) 
 
 // Генерируем структуру и enum
