@@ -5,10 +5,9 @@
 #include <ESPAsyncWebServer.h>
 #include <ElegantOTA.h>
 #include <ESPmDNS.h>
-#include <esp_camera.h>
-#include <esp_timer.h>
-#include <img_converters.h>
-#include <fb_gfx.h>
+#ifdef CAMERA
+    #include "webserver/AsyncWebServer.hpp"
+#endif
 
 #include "settings/settings.hpp"
 

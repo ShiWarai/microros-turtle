@@ -26,99 +26,93 @@ FIELDS(DECLARE_DESERIALIZE_ITER, SOURCE_STR, JSON_NAME, SETTINGS_NAME, UPDATE_QU
 #define GENERATE_SERIALIZE_CYCLE(JSON_NAME, SETTINGS_NAME, FIELDS) \
 FIELDS(DECLARE_SERIALIZE_ITER, JSON_NAME, SETTINGS_NAME)
 
-
-#define PART_BOUNDARY "123456789000000000000987654321"
- 
-// This project was tested with the AI Thinker Model, M5STACK PSRAM Model and M5STACK WITHOUT PSRAM
-#define CAMERA_MODEL_AI_THINKER
-//#define CAMERA_MODEL_M5STACK_PSRAM
-//#define CAMERA_MODEL_M5STACK_WITHOUT_PSRAM
- 
-// Not tested with this model
-//#define CAMERA_MODEL_WROVER_KIT
- 
-#if defined(CAMERA_MODEL_WROVER_KIT)
-  #define PWDN_GPIO_NUM    -1
-  #define RESET_GPIO_NUM   -1
-  #define XCLK_GPIO_NUM    21
-  #define SIOD_GPIO_NUM    26
-  #define SIOC_GPIO_NUM    27
-  
-  #define Y9_GPIO_NUM      35
-  #define Y8_GPIO_NUM      34
-  #define Y7_GPIO_NUM      39
-  #define Y6_GPIO_NUM      36
-  #define Y5_GPIO_NUM      19
-  #define Y4_GPIO_NUM      18
-  #define Y3_GPIO_NUM       5
-  #define Y2_GPIO_NUM       4
-  #define VSYNC_GPIO_NUM   25
-  #define HREF_GPIO_NUM    23
-  #define PCLK_GPIO_NUM    22
- 
-#elif defined(CAMERA_MODEL_M5STACK_PSRAM)
-  #define PWDN_GPIO_NUM     -1
-  #define RESET_GPIO_NUM    15
-  #define XCLK_GPIO_NUM     27
-  #define SIOD_GPIO_NUM     25
-  #define SIOC_GPIO_NUM     23
-  
-  #define Y9_GPIO_NUM       19
-  #define Y8_GPIO_NUM       36
-  #define Y7_GPIO_NUM       18
-  #define Y6_GPIO_NUM       39
-  #define Y5_GPIO_NUM        5
-  #define Y4_GPIO_NUM       34
-  #define Y3_GPIO_NUM       35
-  #define Y2_GPIO_NUM       32
-  #define VSYNC_GPIO_NUM    22
-  #define HREF_GPIO_NUM     26
-  #define PCLK_GPIO_NUM     21
- 
-#elif defined(CAMERA_MODEL_M5STACK_WITHOUT_PSRAM)
-  #define PWDN_GPIO_NUM     -1
-  #define RESET_GPIO_NUM    15
-  #define XCLK_GPIO_NUM     27
-  #define SIOD_GPIO_NUM     25
-  #define SIOC_GPIO_NUM     23
-  
-  #define Y9_GPIO_NUM       19
-  #define Y8_GPIO_NUM       36
-  #define Y7_GPIO_NUM       18
-  #define Y6_GPIO_NUM       39
-  #define Y5_GPIO_NUM        5
-  #define Y4_GPIO_NUM       34
-  #define Y3_GPIO_NUM       35
-  #define Y2_GPIO_NUM       17
-  #define VSYNC_GPIO_NUM    22
-  #define HREF_GPIO_NUM     26
-  #define PCLK_GPIO_NUM     21
- 
-#elif defined(CAMERA_MODEL_AI_THINKER)
-  #define PWDN_GPIO_NUM     32
-  #define RESET_GPIO_NUM    -1
-  #define XCLK_GPIO_NUM      0
-  #define SIOD_GPIO_NUM     26
-  #define SIOC_GPIO_NUM     27
-  
-  #define Y9_GPIO_NUM       35
-  #define Y8_GPIO_NUM       34
-  #define Y7_GPIO_NUM       39
-  #define Y6_GPIO_NUM       36
-  #define Y5_GPIO_NUM       21
-  #define Y4_GPIO_NUM       19
-  #define Y3_GPIO_NUM       18
-  #define Y2_GPIO_NUM        5
-  #define VSYNC_GPIO_NUM    25
-  #define HREF_GPIO_NUM     23
-  #define PCLK_GPIO_NUM     22
-#else
-  #error "Camera model not selected"
+#ifdef CAMERA
+	#define PART_BOUNDARY "123456789000000000000987654321"
+	
+	#if defined(CAMERA_MODEL_WROVER_KIT)
+	#define PWDN_GPIO_NUM    -1
+	#define RESET_GPIO_NUM   -1
+	#define XCLK_GPIO_NUM    21
+	#define SIOD_GPIO_NUM    26
+	#define SIOC_GPIO_NUM    27
+	
+	#define Y9_GPIO_NUM      35
+	#define Y8_GPIO_NUM      34
+	#define Y7_GPIO_NUM      39
+	#define Y6_GPIO_NUM      36
+	#define Y5_GPIO_NUM      19
+	#define Y4_GPIO_NUM      18
+	#define Y3_GPIO_NUM       5
+	#define Y2_GPIO_NUM       4
+	#define VSYNC_GPIO_NUM   25
+	#define HREF_GPIO_NUM    23
+	#define PCLK_GPIO_NUM    22
+	
+	#elif defined(CAMERA_MODEL_M5STACK_PSRAM)
+	#define PWDN_GPIO_NUM     -1
+	#define RESET_GPIO_NUM    15
+	#define XCLK_GPIO_NUM     27
+	#define SIOD_GPIO_NUM     25
+	#define SIOC_GPIO_NUM     23
+	
+	#define Y9_GPIO_NUM       19
+	#define Y8_GPIO_NUM       36
+	#define Y7_GPIO_NUM       18
+	#define Y6_GPIO_NUM       39
+	#define Y5_GPIO_NUM        5
+	#define Y4_GPIO_NUM       34
+	#define Y3_GPIO_NUM       35
+	#define Y2_GPIO_NUM       32
+	#define VSYNC_GPIO_NUM    22
+	#define HREF_GPIO_NUM     26
+	#define PCLK_GPIO_NUM     21
+	
+	#elif defined(CAMERA_MODEL_M5STACK_WITHOUT_PSRAM)
+	#define PWDN_GPIO_NUM     -1
+	#define RESET_GPIO_NUM    15
+	#define XCLK_GPIO_NUM     27
+	#define SIOD_GPIO_NUM     25
+	#define SIOC_GPIO_NUM     23
+	
+	#define Y9_GPIO_NUM       19
+	#define Y8_GPIO_NUM       36
+	#define Y7_GPIO_NUM       18
+	#define Y6_GPIO_NUM       39
+	#define Y5_GPIO_NUM        5
+	#define Y4_GPIO_NUM       34
+	#define Y3_GPIO_NUM       35
+	#define Y2_GPIO_NUM       17
+	#define VSYNC_GPIO_NUM    22
+	#define HREF_GPIO_NUM     26
+	#define PCLK_GPIO_NUM     21
+	
+	#elif defined(CAMERA_MODEL_AI_THINKER)
+	#define PWDN_GPIO_NUM     32
+	#define RESET_GPIO_NUM    -1
+	#define XCLK_GPIO_NUM      0
+	#define SIOD_GPIO_NUM     26
+	#define SIOC_GPIO_NUM     27
+	
+	#define Y9_GPIO_NUM       35
+	#define Y8_GPIO_NUM       34
+	#define Y7_GPIO_NUM       39
+	#define Y6_GPIO_NUM       36
+	#define Y5_GPIO_NUM       21
+	#define Y4_GPIO_NUM       19
+	#define Y3_GPIO_NUM       18
+	#define Y2_GPIO_NUM        5
+	#define VSYNC_GPIO_NUM    25
+	#define HREF_GPIO_NUM     23
+	#define PCLK_GPIO_NUM     22
+	#else
+	#error "Camera model not selected"
+	#endif
+	
+	static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace; boundary=frame";
+	static const char* _STREAM_BOUNDARY =  "--frame";
+	static const char* _STREAM_PART = "\r\nContent-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
+	camera_config_t config;
 #endif
- 
-static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
-static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
-static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
 
 unsigned long ota_progress_millis = 0;
@@ -173,64 +167,38 @@ String WirelessController::serializeSettings()
 	return json_str;
 }
 
-static esp_err_t stream_handler(AsyncWebServerRequest *req) {
-  camera_fb_t * fb = NULL;
-  esp_err_t res = ESP_OK;
-  size_t _jpg_buf_len = 0;
-  uint8_t * _jpg_buf = NULL;
-  char * part_buf[64];
- 
-//   res = req;
-//   if(res != ESP_OK){
-//     return res;
-//   }
- 
-//   while(true){
-//     fb = esp_camera_fb_get();
-//     if (!fb) {
-//       Serial.println("Camera capture failed");
-//       res = ESP_FAIL;
-//     } else {
-//       if(fb->width > 400){
-//         if(fb->format != PIXFORMAT_JPEG){
-//           bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
-//           esp_camera_fb_return(fb);
-//           fb = NULL;
-//           if(!jpeg_converted){
-//             Serial.println("JPEG compression failed");
-//             res = ESP_FAIL;
-//           }
-//         } else {
-//           _jpg_buf_len = fb->len;
-//           _jpg_buf = fb->buf;
-//         }
-//       }
-//     }
-//     if(res == ESP_OK){
-//       size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, _jpg_buf_len);
-//       res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
-//     }
-//     if(res == ESP_OK){
-//       res = httpd_resp_send_chunk(req, (const char *)_jpg_buf, _jpg_buf_len);
-//     }
-//     if(res == ESP_OK){
-//       res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
-//     }
-//     if(fb){
-//       esp_camera_fb_return(fb);
-//       fb = NULL;
-//       _jpg_buf = NULL;
-//     } else if(_jpg_buf){
-//       free(_jpg_buf);
-//       _jpg_buf = NULL;
-//     }
-//     if(res != ESP_OK){
-//       break;
-//     }
-//     //Serial.printf("MJPG: %uB\n",(uint32_t)(_jpg_buf_len));
-//   }
-  return res;
+
+#ifdef CAMERA
+bool webcam_init(){
+	camera_config_t config;
+
+	config.ledc_channel = LEDC_CHANNEL_0;
+	config.ledc_timer = LEDC_TIMER_0;
+	config.pin_d0 = Y2_GPIO_NUM;
+	config.pin_d1 = Y3_GPIO_NUM;
+	config.pin_d2 = Y4_GPIO_NUM;
+	config.pin_d3 = Y5_GPIO_NUM;
+	config.pin_d4 = Y6_GPIO_NUM;
+	config.pin_d5 = Y7_GPIO_NUM;
+	config.pin_d6 = Y8_GPIO_NUM;
+	config.pin_d7 = Y9_GPIO_NUM;
+	config.pin_xclk = XCLK_GPIO_NUM;
+	config.pin_pclk = PCLK_GPIO_NUM;
+	config.pin_vsync = VSYNC_GPIO_NUM;
+	config.pin_href = HREF_GPIO_NUM;
+	config.pin_sccb_sda = SIOD_GPIO_NUM;
+	config.pin_sccb_scl = SIOC_GPIO_NUM;
+	config.pin_pwdn = PWDN_GPIO_NUM;
+	config.pin_reset = RESET_GPIO_NUM;
+	config.xclk_freq_hz = 20000000;
+	config.pixel_format = PIXFORMAT_JPEG;
+	config.frame_size = FRAMESIZE_VGA;
+	config.jpeg_quality = 10;
+	config.fb_count = 2;
+
+	return esp_camera_init(&config);
 }
+#endif
 
 void WirelessController::wirelessTask(void *pvParameters)
 {
@@ -246,6 +214,13 @@ void WirelessController::wirelessTask(void *pvParameters)
 		vTaskDelay(500);
 	MDNS.addService("http", "tcp", 80);
 
+
+	if (webcam_init() == ESP_OK) {
+		Serial.println("Camera init success");
+  	} else {
+		Serial.println("Camera init failed!");
+	}
+
 	
 	AsyncWebServer server(PORT); // Веб-сервер
 
@@ -253,14 +228,16 @@ void WirelessController::wirelessTask(void *pvParameters)
  	DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT");
   	DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
 
+	#ifdef CAMERA
 	// Получение камеры
-	server.on("/webcam", HTTP_GET, stream_handler);
+	server.on("/webcam", HTTP_GET, AsyncJpegStreamResponse::streamJpg);
+	#endif
 
 	// Тестовое получение данных для пинга по HTTP
 	server.on("/ping", HTTP_GET, [](AsyncWebServerRequest *request) {
 		request->send(200, "application/json", "{\"message\":\"OK\"}"); }
 	);
-
+	
 	// Получение настроек
 	server.on("/settings", HTTP_GET, 
 		[](AsyncWebServerRequest *request) {
