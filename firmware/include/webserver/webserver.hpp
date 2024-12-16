@@ -5,11 +5,12 @@
 #include <ESPAsyncWebServer.h>
 #include <ElegantOTA.h>
 #include <ESPmDNS.h>
-#ifdef CAMERA
-    #include "webserver/AsyncWebServer.hpp"
-#endif
 
 #include "settings/settings.hpp"
+#include "webserver/ota_utils.hpp"
+#ifdef CAMERA
+    #include "camera/webcam.hpp"
+#endif
 
 class WirelessController
 {
@@ -18,5 +19,4 @@ public:
 private:
     static bool deserializeSettings(String json_str, bool &needReboot);
     static String serializeSettings();
-    static String serializeTestingResult();
 };

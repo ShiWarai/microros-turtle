@@ -26,117 +26,6 @@ FIELDS(DECLARE_DESERIALIZE_ITER, SOURCE_STR, JSON_NAME, SETTINGS_NAME, UPDATE_QU
 #define GENERATE_SERIALIZE_CYCLE(JSON_NAME, SETTINGS_NAME, FIELDS) \
 FIELDS(DECLARE_SERIALIZE_ITER, JSON_NAME, SETTINGS_NAME)
 
-#ifdef CAMERA
-	#define PART_BOUNDARY "123456789000000000000987654321"
-	
-	#if defined(CAMERA_MODEL_WROVER_KIT)
-	#define PWDN_GPIO_NUM    -1
-	#define RESET_GPIO_NUM   -1
-	#define XCLK_GPIO_NUM    21
-	#define SIOD_GPIO_NUM    26
-	#define SIOC_GPIO_NUM    27
-	
-	#define Y9_GPIO_NUM      35
-	#define Y8_GPIO_NUM      34
-	#define Y7_GPIO_NUM      39
-	#define Y6_GPIO_NUM      36
-	#define Y5_GPIO_NUM      19
-	#define Y4_GPIO_NUM      18
-	#define Y3_GPIO_NUM       5
-	#define Y2_GPIO_NUM       4
-	#define VSYNC_GPIO_NUM   25
-	#define HREF_GPIO_NUM    23
-	#define PCLK_GPIO_NUM    22
-	
-	#elif defined(CAMERA_MODEL_M5STACK_PSRAM)
-	#define PWDN_GPIO_NUM     -1
-	#define RESET_GPIO_NUM    15
-	#define XCLK_GPIO_NUM     27
-	#define SIOD_GPIO_NUM     25
-	#define SIOC_GPIO_NUM     23
-	
-	#define Y9_GPIO_NUM       19
-	#define Y8_GPIO_NUM       36
-	#define Y7_GPIO_NUM       18
-	#define Y6_GPIO_NUM       39
-	#define Y5_GPIO_NUM        5
-	#define Y4_GPIO_NUM       34
-	#define Y3_GPIO_NUM       35
-	#define Y2_GPIO_NUM       32
-	#define VSYNC_GPIO_NUM    22
-	#define HREF_GPIO_NUM     26
-	#define PCLK_GPIO_NUM     21
-	
-	#elif defined(CAMERA_MODEL_M5STACK_WITHOUT_PSRAM)
-	#define PWDN_GPIO_NUM     -1
-	#define RESET_GPIO_NUM    15
-	#define XCLK_GPIO_NUM     27
-	#define SIOD_GPIO_NUM     25
-	#define SIOC_GPIO_NUM     23
-	
-	#define Y9_GPIO_NUM       19
-	#define Y8_GPIO_NUM       36
-	#define Y7_GPIO_NUM       18
-	#define Y6_GPIO_NUM       39
-	#define Y5_GPIO_NUM        5
-	#define Y4_GPIO_NUM       34
-	#define Y3_GPIO_NUM       35
-	#define Y2_GPIO_NUM       17
-	#define VSYNC_GPIO_NUM    22
-	#define HREF_GPIO_NUM     26
-	#define PCLK_GPIO_NUM     21
-	
-	#elif defined(CAMERA_MODEL_AI_THINKER)
-	#define PWDN_GPIO_NUM     32
-	#define RESET_GPIO_NUM    -1
-	#define XCLK_GPIO_NUM      0
-	#define SIOD_GPIO_NUM     26
-	#define SIOC_GPIO_NUM     27
-	
-	#define Y9_GPIO_NUM       35
-	#define Y8_GPIO_NUM       34
-	#define Y7_GPIO_NUM       39
-	#define Y6_GPIO_NUM       36
-	#define Y5_GPIO_NUM       21
-	#define Y4_GPIO_NUM       19
-	#define Y3_GPIO_NUM       18
-	#define Y2_GPIO_NUM        5
-	#define VSYNC_GPIO_NUM    25
-	#define HREF_GPIO_NUM     23
-	#define PCLK_GPIO_NUM     22
-	#else
-	#error "Camera model not selected"
-	#endif
-	
-	static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace; boundary=frame";
-	static const char* _STREAM_BOUNDARY =  "--frame";
-	static const char* _STREAM_PART = "\r\nContent-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
-	camera_config_t config;
-#endif
-
-
-unsigned long ota_progress_millis = 0;
-
-void onOTAStart() {
-	Serial.println("OTA: Обновление запущено!");
-}
-
-void onOTAProgress(size_t current, size_t final) {
-	if (millis() - ota_progress_millis > 1000) {
-		ota_progress_millis = millis();
-		Serial.printf("OTA: Загружено %u байт из конечных %u байт\r\n", current, final);
-	}
-}
-
-void onOTAEnd(bool success) {
-	if (success) {
-		Serial.println("OTA: Обновление завершено успешно!");
-	} else {
-		Serial.println("OTA: Произошли ошибки при обновлении!");
-	}
-}
-
-
 bool WirelessController::deserializeSettings(String json_str, bool &needReboot)
 {
 	JsonDocument json;
@@ -167,39 +56,6 @@ String WirelessController::serializeSettings()
 	return json_str;
 }
 
-
-#ifdef CAMERA
-bool webcam_init(){
-	camera_config_t config;
-
-	config.ledc_channel = LEDC_CHANNEL_0;
-	config.ledc_timer = LEDC_TIMER_0;
-	config.pin_d0 = Y2_GPIO_NUM;
-	config.pin_d1 = Y3_GPIO_NUM;
-	config.pin_d2 = Y4_GPIO_NUM;
-	config.pin_d3 = Y5_GPIO_NUM;
-	config.pin_d4 = Y6_GPIO_NUM;
-	config.pin_d5 = Y7_GPIO_NUM;
-	config.pin_d6 = Y8_GPIO_NUM;
-	config.pin_d7 = Y9_GPIO_NUM;
-	config.pin_xclk = XCLK_GPIO_NUM;
-	config.pin_pclk = PCLK_GPIO_NUM;
-	config.pin_vsync = VSYNC_GPIO_NUM;
-	config.pin_href = HREF_GPIO_NUM;
-	config.pin_sccb_sda = SIOD_GPIO_NUM;
-	config.pin_sccb_scl = SIOC_GPIO_NUM;
-	config.pin_pwdn = PWDN_GPIO_NUM;
-	config.pin_reset = RESET_GPIO_NUM;
-	config.xclk_freq_hz = 20000000;
-	config.pixel_format = PIXFORMAT_JPEG;
-	config.frame_size = FRAMESIZE_VGA;
-	config.jpeg_quality = 10;
-	config.fb_count = 2;
-
-	return esp_camera_init(&config);
-}
-#endif
-
 void WirelessController::wirelessTask(void *pvParameters)
 {
 	String device_hostname = String("turtle_") + String(settings.turtle_id);
@@ -214,8 +70,8 @@ void WirelessController::wirelessTask(void *pvParameters)
 		vTaskDelay(500);
 	MDNS.addService("http", "tcp", 80);
 
-
-	if (webcam_init() == ESP_OK) {
+	Webcam camera;
+	if (camera.init() == ESP_OK) {
 		Serial.println("Camera init success");
   	} else {
 		Serial.println("Camera init failed!");
@@ -227,11 +83,6 @@ void WirelessController::wirelessTask(void *pvParameters)
 	DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
  	DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT");
   	DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
-
-	#ifdef CAMERA
-	// Получение камеры
-	server.on("/webcam", HTTP_GET, AsyncJpegStreamResponse::streamJpg);
-	#endif
 
 	// Тестовое получение данных для пинга по HTTP
 	server.on("/ping", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -265,7 +116,7 @@ void WirelessController::wirelessTask(void *pvParameters)
 						request->send(200, "application/json", "{\"message\":\"Settings updated\"}");
 					else {
 						request->send(200, "application/json", "{\"message\":\"Restart to update settings...\"}");
-						xTaskCreate([](void *){vTaskDelay(1000); ESP.restart();}, "restartTask", 512, NULL, 0, NULL);
+						xTaskCreate([](void *){vTaskDelay(3000); ESP.restart();}, "restartTask", 1024, NULL, 0, NULL);
 					}
 				}
 				else
@@ -281,12 +132,18 @@ void WirelessController::wirelessTask(void *pvParameters)
 		[](AsyncWebServerRequest *request) {
 			if (request->hasHeader("api_key") && request->header("api_key") == settings.access_key) {
 				request->send(200, "application/json", "{\"message\":\"Restart ESP32...\"}");
-				xTaskCreate([](void *){vTaskDelay(1000); ESP.restart();}, "restartTask", 512, NULL, 0, NULL);
+				xTaskCreate([](void *){vTaskDelay(3000); ESP.restart();}, "restartTask", 1024, NULL, 0, NULL);
 			}
 			else
 				request->send(403, "application/json", "{\"error\":\"Invalid access key\"}");
 		}
 	);
+
+	#ifdef CAMERA
+	// Получение камеры
+	server.on("/webcam", HTTP_GET, Webcam::streamJpg);
+	#endif
+
 
 	// OTA
 	ElegantOTA.begin(&server);
@@ -294,7 +151,6 @@ void WirelessController::wirelessTask(void *pvParameters)
 	String user = String("turtle_") + settings.turtle_id;
 	String password = settings.access_key;
 	ElegantOTA.setAuth(user.c_str(), password.c_str());
-	ElegantOTA.setAutoReboot(true);
 	ElegantOTA.onStart(onOTAStart);
 	ElegantOTA.onProgress(onOTAProgress);
 	ElegantOTA.onEnd(onOTAEnd);
@@ -302,8 +158,6 @@ void WirelessController::wirelessTask(void *pvParameters)
 	server.begin(); // Запускаем сервер
 
 	while(true) {
-		ElegantOTA.loop();
-
 		vTaskDelay(settings.wireless_delay);
 	}
 }

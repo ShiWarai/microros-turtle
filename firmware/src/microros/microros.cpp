@@ -1,9 +1,5 @@
 #include "microros/microros.hpp"
 
-#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){ error_loop(); }}
-#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)) {}}
-
-
 rcl_publisher_t publisher;
 rcl_subscription_t subscriber;
 std_msgs__msg__Int32 msg;
@@ -29,7 +25,6 @@ IPAddress getIPAddressByHostname(const char *hostname)
 	}
 }
 
-// Error handle loop
 void error_loop() {
 	while(1) {
 		Serial.println("Error!");
@@ -49,26 +44,6 @@ void subscription_callback(const void * msgin)
 {  
 	const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 	Serial.println(msg->data);
-}
-
-void MicroRosController::onOTAStart() {
-	Serial.println("OTA: Обновление запущено!");
-}
-
-void MicroRosController::onOTAProgress(size_t current, size_t final) {
-	MicroRosController::ota_progress_millis = 0;
-	if (millis() - MicroRosController::ota_progress_millis > 1000) {
-		ota_progress_millis = millis();
-		Serial.printf("OTA: Загружено %u байт из конечных %u байт\r\n", current, final);
-	}
-}
-
-void MicroRosController::onOTAEnd(bool success) {
-	if (success) {
-		Serial.println("OTA: Обновление завершено успешно!");
-	} else {
-		Serial.println("OTA: Произошли ошибки при обновлении!");
-	}
 }
 
 void MicroRosController::microrosTask(void *pvParameters)
