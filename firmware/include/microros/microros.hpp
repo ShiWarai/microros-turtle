@@ -6,6 +6,7 @@
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
 #include <std_msgs/msg/int32.h>
+#include <geometry_msgs/msg/twist.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include "settings/settings.hpp"
