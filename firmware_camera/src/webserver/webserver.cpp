@@ -58,7 +58,7 @@ String WirelessController::serializeSettings()
 
 void WirelessController::wirelessTask(void *pvParameters)
 {
-	String device_hostname = String("turtle_") + String(settings.turtle_id);
+	String device_hostname = String("cam_turtle_") + String(settings.turtle_id);
 
 	WiFi.setHostname(device_hostname.c_str()); 
 	WiFi.begin(settings.wifi_ssid, settings.wifi_password);
@@ -148,7 +148,7 @@ void WirelessController::wirelessTask(void *pvParameters)
 	// OTA
 	ElegantOTA.begin(&server);
 
-	String user = String("turtle_") + settings.turtle_id;
+	String user = device_hostname;
 	String password = settings.access_key;
 	ElegantOTA.setAuth(user.c_str(), password.c_str());
 	ElegantOTA.onStart(onOTAStart);

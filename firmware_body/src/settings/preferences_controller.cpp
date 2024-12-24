@@ -11,9 +11,11 @@ void PreferencesController::preferencesTask(void *pvParameters) {
 	settings.turtle_id = ID;
 	settings.wifi_password = WIFI_PASSWORD;
 	settings.wifi_ssid = WIFI_SSID;
+	settings.ros_enabled = 1;
 	settings.agent_ip = AGENT_IP;
 	settings.agent_port = AGENT_PORT;
 	settings.wireless_delay = 1000 / portTICK_PERIOD_MS;
+	settings.usb_delay = 1000 / portTICK_PERIOD_MS;
 	settings.access_key = ACCESS_KEY;
 
 	DECLARE_SETTING_TYPES_LINKS_VARIANT(UNIQUE_SETTINGS_TYPES) setting;

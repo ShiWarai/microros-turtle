@@ -5,9 +5,6 @@ rcl_subscription_t subscriber;
 rcl_timer_t timer;
 std_msgs__msg__Int32 msg;
 
-rcl_subscription_t move_vector_subscriber;
-geometry_msgs__msg__Twist move_vector_msg;
-
 rclc_executor_t executor;
 rclc_support_t support;
 rcl_allocator_t allocator;
@@ -49,20 +46,26 @@ void subscription_callback(const void *msgin)
 	Serial.println(msg->data);
 }
 
-void move_vector_callback(const void *msgin)
-{  
-	const geometry_msgs__msg__Twist *msg = (const geometry_msgs__msg__Twist *)msgin;
-	Serial.println(msg->linear.x);
-}
-
 void MicroRosController::microrosTask(void *pvParameters)
 {
 	IPAddress agent_ip_address = IPAddress();
 	agent_ip_address.fromString(settings.agent_ip);
 
 	#ifdef AGENT_IP
-		set_microros_wifi_transports(WIFI_SSID, WIFI_PASSWORD, agent_ip_address, AGENT_PORT);
+		static struct micro_ros_agent_locator locator;
+		locator.address = agent_ip_address;
+		locator.port = settings.agent_port;
+
+		rmw_uros_set_custom_transport(
+			false,
+			(void *) &locator,
+			platformio_transport_open,
+			platformio_transport_close,
+			platformio_transport_write,
+			platformio_transport_read
+		);
 	#else
+		#error "NEED FIX THIS BLOCK"
 		set_microros_wifi_transports(WIFI_SSID, WIFI_PASSWORD, getIPAddressByHostname(AGENT_HOSTNAME), AGENT_PORT);
 	#endif
 
@@ -72,30 +75,15 @@ void MicroRosController::microrosTask(void *pvParameters)
 	RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
 
 	// create node
-	RCCHECK(rclc_node_init_default(&node, "micro_ros_platformio_node", "", &support));
+	RCCHECK(rclc_node_init_default(&node, String("cam_node_tutle_" + settings.turtle_id).c_str(), "", &support));
 
 
-	// create publisher
 	RCCHECK(rclc_publisher_init_default(
 		&publisher,
 		&node,
 		ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-		"micro_ros_publisher"));
-
-	// create subscriber
-	RCCHECK(rclc_subscription_init_default(
-		&subscriber,
-		&node,
-		ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-		"micro_ros_subscriber"));
-
-	RCCHECK(rclc_subscription_init_best_effort(
-		&move_vector_subscriber,
-		&node,
-		ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
-		"move_vector"));
-
-	// create timer,
+		"test_pub"));
+	
 	const unsigned int timer_timeout = 1000;
 	RCCHECK(rclc_timer_init_default(
 		&timer,
@@ -103,14 +91,18 @@ void MicroRosController::microrosTask(void *pvParameters)
 		RCL_MS_TO_NS(timer_timeout),
 		timer_callback));
 
-	// create executor
-	RCCHECK(rclc_executor_init(&executor, &support.context, 3, &allocator));
+	RCCHECK(rclc_subscription_init_default(
+		&subscriber,
+		&node,
+		ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+		"test_sub"));
+
+	RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator)); // create executor
 	RCCHECK(rclc_executor_add_timer(&executor, &timer));
 	RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
-	RCCHECK(rclc_executor_add_subscription(&executor, &move_vector_subscriber, &move_vector_msg, &move_vector_callback, ON_NEW_DATA));
 
 	msg.data = 0;
-
+	
     while(true) {
         delay(100);
 	    RCSOFTCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
