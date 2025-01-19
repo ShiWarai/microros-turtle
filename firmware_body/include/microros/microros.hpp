@@ -7,11 +7,15 @@
 #include <rclc/executor.h>
 #include <std_msgs/msg/int32.h>
 #include <geometry_msgs/msg/twist.h>
+#include <std_msgs/msg/float32_multi_array.h>
+#include <nav_msgs/msg/odometry.h>
+#include <geometry_msgs/msg/quaternion.h>
 #include <micro_ros_utilities/string_utilities.h>
 #include <sensor_msgs/msg/laser_scan.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
 
+#include "motor_controller/motor_controller.hpp"
 #include "settings/settings.hpp"
 #include "dreame_lidar.hpp"
 

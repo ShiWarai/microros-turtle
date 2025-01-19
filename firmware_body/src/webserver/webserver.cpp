@@ -126,7 +126,7 @@ void WirelessController::wirelessTask(void *pvParameters)
 		[](AsyncWebServerRequest *request) {
 			if (request->hasHeader("api_key") && request->header("api_key") == settings.access_key) {
 				request->send(200, "application/json", "{\"message\":\"Restart ESP32...\"}");
-				xTaskCreate([](void *){vTaskDelay(3000); ESP.restart();}, "restartTask", 1024, NULL, 0, NULL);
+				xTaskCreate([](void *){vTaskDelay(1000); ESP.restart();}, "restartTask", 1024, NULL, 0, NULL);
 			}
 			else
 				request->send(403, "application/json", "{\"error\":\"Invalid access key\"}");
