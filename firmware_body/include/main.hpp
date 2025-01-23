@@ -8,7 +8,7 @@
 #include "webserver/webserver.hpp"
 #include "settings/preferences_controller.hpp"
 #include "usb_controller/usb_controller.hpp"
-
+#include "motor_controller/motor_controller.hpp"
 
 void setup();
 void loop() {vTaskDelete(NULL);}

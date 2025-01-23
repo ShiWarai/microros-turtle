@@ -11,9 +11,11 @@
 #include <nav_msgs/msg/odometry.h>
 #include <geometry_msgs/msg/quaternion.h>
 #include <micro_ros_utilities/string_utilities.h>
+#include <sensor_msgs/msg/imu.h>
 #include <sensor_msgs/msg/laser_scan.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
+#include <SparkFunMPU9250-DMP.h>
 
 #include "motor_controller/motor_controller.hpp"
 #include "settings/settings.hpp"

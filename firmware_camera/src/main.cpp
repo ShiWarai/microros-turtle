@@ -16,5 +16,5 @@ void setup()
 	while (WiFi.status() != WL_CONNECTED)
 		delay(500);
 	
-	//xTaskCreate(MicroRosController::microrosTask, "microROS task", 8196, NULL, 2, NULL);
+	xTaskCreate(MicroRosController::microrosTask, "microROS task", 20000, NULL, 2, NULL);
 }

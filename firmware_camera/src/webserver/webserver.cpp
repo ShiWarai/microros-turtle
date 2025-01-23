@@ -70,12 +70,14 @@ void WirelessController::wirelessTask(void *pvParameters)
 		vTaskDelay(500);
 	MDNS.addService("http", "tcp", 80);
 
+	#if CAMERA_MODE == 0
 	Webcam camera;
 	if (camera.init() == ESP_OK) {
 		Serial.println("Camera init success");
   	} else {
 		Serial.println("Camera init failed!");
 	}
+	#endif
 
 	
 	AsyncWebServer server(PORT); // Веб-сервер
@@ -139,7 +141,7 @@ void WirelessController::wirelessTask(void *pvParameters)
 		}
 	);
 
-	#ifdef CAMERA
+	#if CAMERA_MODE == 0
 	// Получение камеры
 	server.on("/webcam", HTTP_GET, Webcam::streamJpg);
 	#endif

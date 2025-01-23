@@ -8,7 +8,7 @@
 
 #include "settings/settings.hpp"
 #include "webserver/ota_utils.hpp"
-#ifdef CAMERA
+#if CAMERA_MODE == 0
     #include "camera/webcam.hpp"
 #endif
 
