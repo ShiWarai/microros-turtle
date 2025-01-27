@@ -87,6 +87,6 @@ void DreameLidar::getData(void* param) {
 void DreameLidar::startTask() {
     xTaskCreate(getData, "lidar_data_task", 8196, this, 1, NULL);
 
-    while(!this->dataObtained)
-        vTaskDelay(100);
+    // while(!this->dataObtained)
+    //     vTaskDelay(100);
 }

@@ -18,7 +18,7 @@ constexpr uint8_t IN1_M2 = 21;
 constexpr uint8_t IN2_M2 = 19;
 
 // Физические параметры робота
-constexpr float WHEEL_BASE = 0.3f;     // Расстояние между колесами (метры)
+constexpr float WHEEL_BASE = 0.3f;	  // Расстояние между колесами (метры)
 constexpr float WHEEL_RADIUS = 0.07f; // Радиус колес (метры)
 constexpr uint16_t FULL_ROTATE = 374;
 constexpr float RPM_TO_MPS = 2 * PI * WHEEL_RADIUS / 60.0f; // Константы для пересчёта RPM в скорость
@@ -60,15 +60,15 @@ rclc_support_t support;
 rcl_allocator_t allocator;
 rcl_node_t node;
 
-
 // Новый объект для хранения текущей позиции для одометрии
-float x = 0.0f;     // Позиция по X (м)
-float y = 0.0f;     // Позиция по Y (м)
+float x = 0.0f;		// Позиция по X (м)
+float y = 0.0f;		// Позиция по Y (м)
 float theta = 0.0f; // Ориентация (рад)
 
 // Ориентация по умолчанию (в 3D)
 const signed char orientationDefault[9] = {0, 1, 0, 0, 0, 1, 1, 0, 0};
 
+// volatile bool interrupt = false;
 
 IPAddress getIPAddressByHostname(const char *hostname)
 {
@@ -96,36 +96,37 @@ void error_loop()
 
 void cmd_vel_callback(const void *msgin)
 {
-    const geometry_msgs__msg__Twist *msg = (const geometry_msgs__msg__Twist *)msgin;
+	const geometry_msgs__msg__Twist *msg = (const geometry_msgs__msg__Twist *)msgin;
 
-    float linear_speed = float(msg->linear.x);   // Линейная скорость (м/с)
-    float angular_speed = float(msg->angular.z); // Угловая скорость (рад/с)
+	float linear_speed = float(msg->linear.x);	 // Линейная скорость (м/с)
+	float angular_speed = float(msg->angular.z); // Угловая скорость (рад/с)
 
-    // Вычисляем целевые скорости колес
-    float left_wheel_rpm = (linear_speed - angular_speed * WHEEL_BASE / 2.0) * (60 / (2 * PI * WHEEL_RADIUS));
-    float right_wheel_rpm = (linear_speed + angular_speed * WHEEL_BASE / 2.0) * (60 / (2 * PI * WHEEL_RADIUS));
+	// Вычисляем целевые скорости колес
+	float left_wheel_rpm = (linear_speed - angular_speed * WHEEL_BASE / 2.0) * (60 / (2 * PI * WHEEL_RADIUS));
+	float right_wheel_rpm = (linear_speed + angular_speed * WHEEL_BASE / 2.0) * (60 / (2 * PI * WHEEL_RADIUS));
 
-    motorA.setTargetRPM(left_wheel_rpm);
-    motorB.setTargetRPM(right_wheel_rpm);
+	motorA.setTargetRPM(left_wheel_rpm);
+	motorB.setTargetRPM(right_wheel_rpm);
 
-    // // Для отладки выводим значения
-    // Serial.print("Linear: ");
-    // Serial.print(linear_speed);
-    // Serial.print(" Angular: ");
-    // Serial.println(angular_speed);
-    // Serial.print("Left RPM: ");
-    // Serial.print(left_wheel_rpm);
-    // Serial.print(" Right RPM: ");
-    // Serial.println(right_wheel_rpm);
+	// // Для отладки выводим значения
+	// Serial.print("Linear: ");
+	// Serial.print(linear_speed);
+	// Serial.print(" Angular: ");
+	// Serial.println(angular_speed);
+	// Serial.print("Left RPM: ");
+	// Serial.print(left_wheel_rpm);
+	// Serial.print(" Right RPM: ");
+	// Serial.println(right_wheel_rpm);
 }
 
 void params_callback(const void *msgin)
 {
 	const std_msgs__msg__Float32MultiArray *msg = (const std_msgs__msg__Float32MultiArray *)msgin;
 
-	if (msg->data.size == 3) {
-		motorA.setPIDConfig( msg->data.data[0], msg->data.data[1], msg->data.data[2]);
-		motorB.setPIDConfig( msg->data.data[0], msg->data.data[1], msg->data.data[2]);
+	if (msg->data.size == 3)
+	{
+		motorA.setPIDConfig(msg->data.data[0], msg->data.data[1], msg->data.data[2]);
+		motorB.setPIDConfig(msg->data.data[0], msg->data.data[1], msg->data.data[2]);
 	}
 	else
 		Serial.println("Invalid PID parameters received!");
@@ -134,134 +135,143 @@ void params_callback(const void *msgin)
 // Преобразование угла в кватернион
 void set_orientation(geometry_msgs__msg__Quaternion &orientation, double theta)
 {
-    // Вычисляем компоненты кватерниона для поворота вокруг оси Z (в 2D)
-    double qx = 0.0;
-    double qy = 0.0;
-    double qz = sin(theta / 2.0);
-    double qw = cos(theta / 2.0);
+	// Вычисляем компоненты кватерниона для поворота вокруг оси Z (в 2D)
+	double qx = 0.0;
+	double qy = 0.0;
+	double qz = sin(theta / 2.0);
+	double qw = cos(theta / 2.0);
 
-    // Устанавливаем значения в сообщение
-    orientation.x = qx;
-    orientation.y = qy;
-    orientation.z = qz;
-    orientation.w = qw;
+	// Устанавливаем значения в сообщение
+	orientation.x = qx;
+	orientation.y = qy;
+	orientation.z = qz;
+	orientation.w = qw;
 }
 
 void update_odometry(float left_rpm, float right_rpm, float dt)
 {
-    // Конвертируем RPM в линейные скорости
-    float left_velocity = RPM_TO_MPS * left_rpm;  // Левое колесо (м/с)
-    float right_velocity = RPM_TO_MPS * right_rpm; // Правое колесо (м/с)
+	// Конвертируем RPM в линейные скорости
+	float left_velocity = RPM_TO_MPS * left_rpm;   // Левое колесо (м/с)
+	float right_velocity = RPM_TO_MPS * right_rpm; // Правое колесо (м/с)
 
-    // Вычисляем линейную и угловую скорость робота
-    float linear_velocity = (left_velocity + right_velocity) / 2.0f;
-    float angular_velocity = (right_velocity - left_velocity) / WHEEL_BASE;
+	// Вычисляем линейную и угловую скорость робота
+	float linear_velocity = (left_velocity + right_velocity) / 2.0f;
+	float angular_velocity = (right_velocity - left_velocity) / WHEEL_BASE;
 
-    // Интегрируем для вычисления новой позиции
-    float delta_theta = angular_velocity * dt;
-    theta += delta_theta;
-    theta = fmod(theta + 2 * PI, 2 * PI); // Нормализация угла
+	// Интегрируем для вычисления новой позиции
+	float delta_theta = angular_velocity * dt;
+	theta += delta_theta;
+	theta = fmod(theta + 2 * PI, 2 * PI); // Нормализация угла
 
-    float delta_x = linear_velocity * cos(theta) * dt;
-    float delta_y = linear_velocity * sin(theta) * dt;
+	float delta_x = linear_velocity * cos(theta) * dt;
+	float delta_y = linear_velocity * sin(theta) * dt;
 
-    x += delta_x;
-    y += delta_y;
+	x += delta_x;
+	y += delta_y;
 
-    // Обновление одометрического сообщения
-    odom_msg.header.stamp.nanosec = esp_timer_get_time() * 1000;
+	// Обновление одометрического сообщения
+	odom_msg.header.stamp.nanosec = esp_timer_get_time() * 1000;
 
-    // Позиция
-    odom_msg.pose.pose.position.x = x;
-    odom_msg.pose.pose.position.y = y;
-    odom_msg.pose.pose.position.z = 0.0f;
+	// Позиция
+	odom_msg.pose.pose.position.x = x;
+	odom_msg.pose.pose.position.y = y;
+	odom_msg.pose.pose.position.z = 0.0f;
 
-    // Ориентация (в формате кватерниона)
-    set_orientation(odom_msg.pose.pose.orientation, theta);
+	// Ориентация (в формате кватерниона)
+	set_orientation(odom_msg.pose.pose.orientation, theta);
 
-    // Скорости
-    odom_msg.twist.twist.linear.x = linear_velocity;
-    odom_msg.twist.twist.linear.y = 0.0f; // В нашем случае скорости в Y нет
-    odom_msg.twist.twist.angular.z = angular_velocity;
+	// Скорости
+	odom_msg.twist.twist.linear.x = linear_velocity;
+	odom_msg.twist.twist.linear.y = 0.0f; // В нашем случае скорости в Y нет
+	odom_msg.twist.twist.angular.z = angular_velocity;
 
 	// Serial.printf("Odometry update: Position (x: %.2f, y: %.2f, theta: %.2f), Linear Velocity: %.2f, Angular Velocity: %.2f\r\n",
-    //             x, y, theta, linear_velocity, angular_velocity);
+	//             x, y, theta, linear_velocity, angular_velocity);
 }
 
 void odometry_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
-    RCLC_UNUSED(last_call_time);
+	motorA.update();
+	motorB.update();
 
-    if (timer != NULL)
-    {
-        // Получение данных с моторов
-        float left_rpm = motorA.getCurrentRPM();
-        float right_rpm = motorB.getCurrentRPM();
+	if (timer != NULL)
+	{
+		// Получение данных с моторов
+		float left_rpm = motorA.getCurrentRPM();
+		float right_rpm = motorB.getCurrentRPM();
 
-        // Расчёт времени между вызовами таймера (dt)
-        static int64_t last_time = 0;
-        int64_t current_time = esp_timer_get_time();
-        float dt = (current_time - last_time) / 1e6f; // В секундах
-        last_time = current_time;
+		// Расчёт времени между вызовами таймера (dt)
+		static int64_t last_time = 0;
+		int64_t current_time = esp_timer_get_time();
+		float dt = (current_time - last_time) / 1e6f; // В секундах
+		last_time = current_time;
 
-        // Обновление одометрии
-        update_odometry(left_rpm, right_rpm, dt);
+		// Обновление одометрии
+		update_odometry(left_rpm, right_rpm, dt);
 
-        // Публикация данных одометрии
-        RCSOFTCHECK(rcl_publish(&odom_publisher, &odom_msg, NULL));
-    }
+		// Публикация данных одометрии
+		RCSOFTCHECK(rcl_publish(&odom_publisher, &odom_msg, NULL));
+	}
 }
 
 void imu_update()
-{	
-
+{
 	unsigned short fifoCnt;
 	inv_error_t result;
 
-	if (digitalRead(INTERRUPT_PIN_MPU) == HIGH) {
+	
 	fifoCnt = imu.fifoAvailable();
 
-	if (fifoCnt > 0) {
+	if (fifoCnt > 0)
+	{
 		result = imu.dmpUpdateFifo();
 
-		if (result == INV_SUCCESS) {
-			imu.computeEulerAngles();
+		if (result == INV_SUCCESS)
+		{
 
 			float q0 = imu.calcQuat(imu.qw);
 			float q1 = imu.calcQuat(imu.qx);
 			float q2 = imu.calcQuat(imu.qy);
 			float q3 = imu.calcQuat(imu.qz);
 
-			// Serial.printf("Qmpu=[%f,%f,%f,%f]\r\n", q0, q1, q2, q3);
-			// Serial.printf("---------------------\r\n");
-			Serial.printf("%f, %f, %f\r\n", imu.roll * 180 / PI, imu.pitch * 180 / PI, imu.yaw * 180 / PI);
-			
-			imu_msg.header.stamp.nanosec = esp_timer_get_time() * 1000;
+			imu_msg.angular_velocity.x = imu.calcGyro(imu.gx) * PI / 180.0;
+			imu_msg.angular_velocity.y = imu.calcGyro(imu.gy) * PI / 180.0;
+			imu_msg.angular_velocity.z = imu.calcGyro(imu.gz) * PI / 180.0;
 
-			imu_msg.angular_velocity.x = imu.gx * (PI / 180.0);
-			imu_msg.angular_velocity.y = imu.gy * (PI / 180.0);
-			imu_msg.angular_velocity.z = imu.gz * (PI / 180.0);
+			imu_msg.linear_acceleration.x = imu.calcAccel(imu.ax) * 10;
+			imu_msg.linear_acceleration.y = imu.calcAccel(imu.ay) * 10;
+			imu_msg.linear_acceleration.z = imu.calcAccel(imu.az) * 10;
 
-			imu_msg.linear_acceleration.x = imu.ax / 1000.0 * 9.8;
-			imu_msg.linear_acceleration.y = imu.ay / 1000.0 * 9.8;
-			imu_msg.linear_acceleration.z = imu.az / 1000.0 * 9.8;
+			//imu.computeEulerAngles();
+			// Serial.printf("%f, %f, %f\r\n", imu.roll * 180 / PI, imu.pitch * 180 / PI, imu.yaw * 180 / PI);
 
 			imu_msg.orientation.w = q0;
 			imu_msg.orientation.x = q1;
 			imu_msg.orientation.y = q2;
 			imu_msg.orientation.z = q3;
 
+			imu_msg.header.stamp.nanosec = esp_timer_get_time() * 1000;
+
 			RCSOFTCHECK(rcl_publish(&imu_publisher, &imu_msg, NULL));
 		}
-	} else {
-		Serial.println("false interrupt");
 	}
-	}
+	// else
+	// {
+	// 	Serial.println("false interrupt");
+	// }
+
+	// interrupt = false;
 }
 
-void imu_timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
+void imu_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
+{
 	imu_update();
 }
+
+// void IRAM_ATTR interrupt_func() {
+//   interrupt = true;
+//   //Serial.println("Iterrupt!");
+// }
 
 void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
@@ -307,37 +317,37 @@ void init_msgs_params()
 
 void init_msgs_odometry()
 {
-    odom_msg.header.frame_id.capacity = 12;
-    odom_msg.header.frame_id.size = 11;
-    odom_msg.header.frame_id.data = new char[odom_msg.header.frame_id.capacity];
-    odom_msg.header.frame_id = micro_ros_string_utilities_init("odom");
+	odom_msg.header.frame_id.capacity = 12;
+	odom_msg.header.frame_id.size = 11;
+	odom_msg.header.frame_id.data = new char[odom_msg.header.frame_id.capacity];
+	odom_msg.header.frame_id = micro_ros_string_utilities_init("odom");
 
-    odom_msg.child_frame_id.capacity = 8;
-    odom_msg.child_frame_id.size = 7;
-    odom_msg.child_frame_id.data = new char[odom_msg.child_frame_id.capacity];
-    odom_msg.child_frame_id = micro_ros_string_utilities_init("base_link");
+	odom_msg.child_frame_id.capacity = 8;
+	odom_msg.child_frame_id.size = 7;
+	odom_msg.child_frame_id.data = new char[odom_msg.child_frame_id.capacity];
+	odom_msg.child_frame_id = micro_ros_string_utilities_init("base_link");
 
-    odom_msg.pose.covariance[0] = 0.1; // Примерные значения ковариации
-    odom_msg.pose.covariance[7] = 0.1;
-    odom_msg.pose.covariance[14] = 1e-3;
-    odom_msg.pose.covariance[21] = 1e-3;
-    odom_msg.pose.covariance[28] = 1e-3;
-    odom_msg.pose.covariance[35] = 0.1;
+	odom_msg.pose.covariance[0] = 0.1; // Примерные значения ковариации
+	odom_msg.pose.covariance[7] = 0.1;
+	odom_msg.pose.covariance[14] = 1e-3;
+	odom_msg.pose.covariance[21] = 1e-3;
+	odom_msg.pose.covariance[28] = 1e-3;
+	odom_msg.pose.covariance[35] = 0.1;
 
-    odom_msg.twist.covariance[0] = 0.1;
-    odom_msg.twist.covariance[7] = 0.1;
-    odom_msg.twist.covariance[14] = 1e-3;
-    odom_msg.twist.covariance[21] = 1e-3;
-    odom_msg.twist.covariance[28] = 1e-3;
-    odom_msg.twist.covariance[35] = 0.1;
+	odom_msg.twist.covariance[0] = 0.1;
+	odom_msg.twist.covariance[7] = 0.1;
+	odom_msg.twist.covariance[14] = 1e-3;
+	odom_msg.twist.covariance[21] = 1e-3;
+	odom_msg.twist.covariance[28] = 1e-3;
+	odom_msg.twist.covariance[35] = 0.1;
 }
 
 void init_msgs_imu()
 {
-    imu_msg.header.frame_id.capacity = 12;
-    imu_msg.header.frame_id.size = 11;
-    imu_msg.header.frame_id.data = new char[imu_msg.header.frame_id.capacity];
-    imu_msg.header.frame_id = micro_ros_string_utilities_init("imu_link");
+	imu_msg.header.frame_id.capacity = 12;
+	imu_msg.header.frame_id.size = 11;
+	imu_msg.header.frame_id.data = new char[imu_msg.header.frame_id.capacity];
+	imu_msg.header.frame_id = micro_ros_string_utilities_init("imu_link");
 }
 
 void init_msgs_laserscan()
@@ -407,31 +417,31 @@ void MicroRosController::microrosTask(void *pvParameters)
 		ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32MultiArray),
 		"/params"));
 
-    RCCHECK(rclc_publisher_init_default(
-        &odom_publisher,
-        &node,
-        ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
-        "/odometry"));
+	RCCHECK(rclc_publisher_init_default(
+		&odom_publisher,
+		&node,
+		ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
+		"/odometry"));
 
-    const unsigned int odom_timer_timeout = 200;
-    RCCHECK(rclc_timer_init_default(
-        &odom_timer,
-        &support,
-        RCL_MS_TO_NS(odom_timer_timeout),
-        odometry_timer_callback));
+	const unsigned int odom_timer_timeout = 200;
+	RCCHECK(rclc_timer_init_default(
+		&odom_timer,
+		&support,
+		RCL_MS_TO_NS(odom_timer_timeout),
+		odometry_timer_callback));
 
-    RCCHECK(rclc_publisher_init_default(
-        &imu_publisher,
-        &node,
-        ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
-        "/imu/data_raw"));
+	RCCHECK(rclc_publisher_init_default(
+		&imu_publisher,
+		&node,
+		ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
+		"/imu/data_raw"));
 
-    const unsigned int imu_timer_timeout = 50;
-    RCCHECK(rclc_timer_init_default(
-        &imu_timer,
-        &support,
-        RCL_MS_TO_NS(imu_timer_timeout),
-        imu_timer_callback));
+	const unsigned int imu_timer_timeout = 50;
+	RCCHECK(rclc_timer_init_default(
+		&imu_timer,
+		&support,
+		RCL_MS_TO_NS(imu_timer_timeout),
+		imu_timer_callback));
 
 	RCCHECK(rclc_publisher_init_default(
 		&lidar_publisher,
@@ -461,44 +471,51 @@ void MicroRosController::microrosTask(void *pvParameters)
 	msg.data = 0;
 
 	lidar = new DreameLidar(&Serial2);
-	//lidar->startTask();
-	
+	lidar->startTask();
+
 	INIT_ENCODER_WITH_NAME(LEFT, ENCODER_M1_A, ENCODER_M1_B)
 	INIT_ENCODER_WITH_NAME(RIGHT, ENCODER_M2_A, ENCODER_M2_B)
 
-	motorA.setPIDConfig(30.0, 0.03, 500.0);
-	motorB.setPIDConfig(30.0, 0.03, 500.0);
+	motorA.setPIDConfig(20.0, 0.03, 500.0);
+	motorB.setPIDConfig(20.0, 0.03, 500.0);
 
-	pinMode(INTERRUPT_PIN_MPU, INPUT_PULLUP);
 	Wire.begin(22, 23); // 22 - SDA, 23 - SCL
 
-	if (imu.begin() != INV_SUCCESS) {
-		while (1) {
-		Serial.println("Unable to communicate with MPU-9250");
-		Serial.println("Check connections, and try again.");
-		Serial.println();
-		delay(5000);
+	if (imu.begin() != INV_SUCCESS)
+	{
+		while (true)
+		{
+			Serial.println("Unable to communicate with MPU-9250");
+			Serial.println("Check connections, and try again.");
+			Serial.println();
+			delay(1000);
 		}
 	}
 
 	imu.enableInterrupt();
 	imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL);
 	imu.setIntLevel(INT_ACTIVE_HIGH);
-	imu.setIntLatched(INT_LATCHED);
+	imu.setAccelFSR(2);
+	imu.setIntLatched(INT_50US_PULSE);
 
 	// Initialize the digital motion processor
-	imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT |   // Enable 6-axis quat
-					DMP_FEATURE_GYRO_CAL,  // Use gyro calibration
-				20);                       // Set DMP FIFO rate to 100 Hz
-
+	imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT |
+					DMP_FEATURE_GYRO_CAL |
+					DMP_FEATURE_SEND_CAL_GYRO |
+					DMP_FEATURE_SEND_RAW_ACCEL,
+					10);
 	imu.dmpSetOrientation(orientationDefault);
 
-	//attachInterrupt(digitalPinToInterrupt(INTERRUPT_PIN_MPU), imu_update, RISING);
+	// pinMode(digitalPinToInterrupt(INTERRUPT_PIN_MPU), INPUT);
+	// attachInterrupt(INTERRUPT_PIN_MPU, interrupt_func, RISING);
+
+	Serial.println("ROS started!");
 	while (true)
 	{
-		motorA.update();
-		motorB.update();
+		//if(interrupt)
+		//	imu_update();
+
 		RCSOFTCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
-		delay(100);
+		vTaskDelay(1);
 	}
 }
