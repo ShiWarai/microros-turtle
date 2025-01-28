@@ -100,7 +100,6 @@ SETTING_INFO {#NAME, #TYPE, REBOOT_IS_REQUIRED, INPUT_VALIDATOR},
 // Определяем поля структуры (тип, название настройки)
 #define SETTINGS_FIELDS(TYPE_AND_NAME, ...) \
     TYPE_AND_NAME(String, access_key, false, NULL, __VA_ARGS__) \
-    TYPE_AND_NAME(uint32_t, wireless_delay, false, validate_uint, __VA_ARGS__) \
     TYPE_AND_NAME(uint32_t, usb_delay, false, validate_uint, __VA_ARGS__) \
     TYPE_AND_NAME(String, hostname, false, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(String, wifi_ssid, true, NULL, __VA_ARGS__) \
@@ -108,6 +107,9 @@ SETTING_INFO {#NAME, #TYPE, REBOOT_IS_REQUIRED, INPUT_VALIDATOR},
     TYPE_AND_NAME(uint32_t, ros_enabled, false, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(String, agent_ip, true, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(uint32_t, agent_port, true, NULL, __VA_ARGS__) \
+    TYPE_AND_NAME(uint32_t, odom_timer_delay, true, NULL, __VA_ARGS__) \
+    TYPE_AND_NAME(uint32_t, imu_timer_delay, true, NULL, __VA_ARGS__) \
+    TYPE_AND_NAME(uint32_t, lidar_timer_delay, true, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(uint32_t, turtle_id, true, validate_id, __VA_ARGS__) 
 
 // Генерируем структуру и enum

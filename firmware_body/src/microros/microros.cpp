@@ -255,12 +255,6 @@ void imu_update()
 			RCSOFTCHECK(rcl_publish(&imu_publisher, &imu_msg, NULL));
 		}
 	}
-	// else
-	// {
-	// 	Serial.println("false interrupt");
-	// }
-
-	// interrupt = false;
 }
 
 void imu_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
@@ -268,43 +262,35 @@ void imu_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 	imu_update();
 }
 
-// void IRAM_ATTR interrupt_func() {
-//   interrupt = true;
-//   //Serial.println("Iterrupt!");
-// }
-
 void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
-	RCLC_UNUSED(last_call_time);
-	if (timer != NULL)
+	if (lidar->dataObtained)
 	{
-		if (lidar->dataObtained)
+		if (xSemaphoreTake(lidar->lock, portMAX_DELAY) == pdTRUE)
 		{
-			// for(size_t i = 0; i < lidar_msg.ranges.capacity; i++)
-			// 	lidar_msg.ranges.data[i] = 0;
-			if (xSemaphoreTake(lidar->lock, portMAX_DELAY) == pdTRUE)
+			for(size_t i = 0; i < lidar_msg.ranges.capacity; i++)
+				lidar_msg.ranges.data[i] = 0;
+
+			int deg;
+			lidar_msg.header.stamp.nanosec = esp_timer_get_time() * 1000;
+
+			for (int i = 0; i < lidar->dataSize; i++)
 			{
-				uint8_t deg;
-				for (int i = 0; i < lidar->dataSize; i++)
+				deg = round(-lidar->theta[i] * 180.0 / M_PI);
+				if (lidar->theta[i] < lidar_msg.angle_max && lidar->theta[i] > lidar_msg.angle_min)
 				{
-					deg = round(-lidar->theta[i] * 180.0 / M_PI);
-					if (lidar->theta[i] < lidar_msg.angle_max && lidar->theta[i] > lidar_msg.angle_min)
-					{
-						// Serial.printf("%d: %f %d;\r\n", deg, lidar->theta[i], lidar->distance[i]);
-						lidar_msg.header.stamp.nanosec = esp_timer_get_time() * 1000;
-						lidar_msg.ranges.data[deg] = ((float)lidar->distance[i]) / 1000.0;
-						#ifdef LIDAR_INTENSITY
-						lidar_msg.intensities.data[deg] = lidar->intensity[i];
-						#endif
-					}
+					lidar_msg.ranges.data[deg] = ((float)lidar->distance[i]) / 1000.0;
+					#ifdef LIDAR_INTENSITY
+					lidar_msg.intensities.data[deg] = lidar->intensity[i];
+					#endif
 				}
-
-				lidar->dataObtained = false; // Сбрасываем флаг после вывода данных
-				xSemaphoreGive(lidar->lock);
 			}
-		}
 
-		RCSOFTCHECK(rcl_publish(&lidar_publisher, &lidar_msg, NULL));
+			lidar->dataObtained = false; // Сбрасываем флаг после вывода данных
+			xSemaphoreGive(lidar->lock);
+			
+			RCSOFTCHECK(rcl_publish(&lidar_publisher, &lidar_msg, NULL));
+		}
 	}
 }
 
@@ -423,24 +409,22 @@ void MicroRosController::microrosTask(void *pvParameters)
 		ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
 		"/odometry"));
 
-	const unsigned int odom_timer_timeout = 200;
 	RCCHECK(rclc_timer_init_default(
 		&odom_timer,
 		&support,
-		RCL_MS_TO_NS(odom_timer_timeout),
+		RCL_MS_TO_NS(settings.odom_timer_delay),
 		odometry_timer_callback));
 
 	RCCHECK(rclc_publisher_init_default(
 		&imu_publisher,
 		&node,
 		ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
-		"/imu/data_raw"));
+		"/imu"));
 
-	const unsigned int imu_timer_timeout = 50;
 	RCCHECK(rclc_timer_init_default(
 		&imu_timer,
 		&support,
-		RCL_MS_TO_NS(imu_timer_timeout),
+		RCL_MS_TO_NS(settings.imu_timer_delay),
 		imu_timer_callback));
 
 	RCCHECK(rclc_publisher_init_default(
@@ -449,11 +433,10 @@ void MicroRosController::microrosTask(void *pvParameters)
 		ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, LaserScan),
 		"/lidar"));
 
-	const unsigned int lidar_timer_timeout = 200;
 	RCCHECK(rclc_timer_init_default(
 		&lidar_timer,
 		&support,
-		RCL_MS_TO_NS(lidar_timer_timeout),
+		RCL_MS_TO_NS(settings.lidar_timer_delay),
 		lidar_timer_callback));
 
 	init_msgs_laserscan();
@@ -480,7 +463,6 @@ void MicroRosController::microrosTask(void *pvParameters)
 	motorB.setPIDConfig(20.0, 0.03, 500.0);
 
 	Wire.begin(22, 23); // 22 - SDA, 23 - SCL
-
 	if (imu.begin() != INV_SUCCESS)
 	{
 		while (true)
@@ -492,13 +474,8 @@ void MicroRosController::microrosTask(void *pvParameters)
 		}
 	}
 
-	imu.enableInterrupt();
 	imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL);
-	imu.setIntLevel(INT_ACTIVE_HIGH);
 	imu.setAccelFSR(2);
-	imu.setIntLatched(INT_50US_PULSE);
-
-	// Initialize the digital motion processor
 	imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT |
 					DMP_FEATURE_GYRO_CAL |
 					DMP_FEATURE_SEND_CAL_GYRO |
@@ -506,15 +483,9 @@ void MicroRosController::microrosTask(void *pvParameters)
 					10);
 	imu.dmpSetOrientation(orientationDefault);
 
-	// pinMode(digitalPinToInterrupt(INTERRUPT_PIN_MPU), INPUT);
-	// attachInterrupt(INTERRUPT_PIN_MPU, interrupt_func, RISING);
-
 	Serial.println("ROS started!");
 	while (true)
 	{
-		//if(interrupt)
-		//	imu_update();
-
 		RCSOFTCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
 		vTaskDelay(1);
 	}

@@ -60,9 +60,12 @@ void DreameLidar::getDataUnit() {
             #ifdef LIDAR_INTENSITY
             intensity[writePos] = intensityTmp[i];
             #endif
+            
             writePos++;
+
             if (writePos >= dataSize) {
                 writePos = 0;
+                this->dataObtained = true;
             }
         }
         xSemaphoreGive(lock);
@@ -71,14 +74,9 @@ void DreameLidar::getDataUnit() {
 
 void DreameLidar::getData(void* param) {
     DreameLidar* self = static_cast<DreameLidar*>(param);
-    float preStartAngle = 0;
     
     while (true) {
         self->getDataUnit();
-        if (self->theta[0] < preStartAngle) {
-            self->dataObtained = true;
-        }
-        preStartAngle = self->theta[0];
 
         vTaskDelay(1);
     }
@@ -86,7 +84,4 @@ void DreameLidar::getData(void* param) {
 
 void DreameLidar::startTask() {
     xTaskCreate(getData, "lidar_data_task", 8196, this, 1, NULL);
-
-    // while(!this->dataObtained)
-    //     vTaskDelay(100);
 }

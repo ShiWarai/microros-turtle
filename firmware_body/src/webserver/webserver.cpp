@@ -147,6 +147,6 @@ void WirelessController::wirelessTask(void *pvParameters)
 	server.begin(); // Запускаем сервер
 
 	while(true) {
-		vTaskDelay(settings.wireless_delay);
+		vTaskDelay(1);
 	}
 }
