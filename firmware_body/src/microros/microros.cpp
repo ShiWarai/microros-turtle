@@ -1,4 +1,7 @@
 #include "microros/microros.hpp"
+#include <std_msgs/msg/string.h>
+#include <stdio.h>
+
 
 // Распиновка
 constexpr uint8_t INTERRUPT_PIN_MPU = 5;
@@ -26,10 +29,9 @@ constexpr float RPM_TO_MPS = 2 * PI * WHEEL_RADIUS / 60.0f; // Констант�
 DECLARE_ENCODER_WITH_NAME(LEFT, ENCODER_M1_A, ENCODER_M1_B)
 DECLARE_ENCODER_WITH_NAME(RIGHT, ENCODER_M2_A, ENCODER_M2_B)
 
+// Инициализация microROS
 rcl_publisher_t publisher;
 rcl_subscription_t subscriber;
-rcl_timer_t timer;
-std_msgs__msg__Int32 msg;
 
 L298N driverA(EN_M1, IN1_M1, IN2_M1);
 L298N driverB(EN_M2, IN1_M2, IN2_M2);
@@ -54,6 +56,9 @@ MPU9250_DMP imu;
 rcl_publisher_t imu_publisher;
 rcl_timer_t imu_timer;
 sensor_msgs__msg__Imu imu_msg;
+
+rcl_publisher_t log_publisher;
+std_msgs__msg__String log_msg;
 
 rclc_executor_t executor;
 rclc_support_t support;
@@ -123,10 +128,10 @@ void params_callback(const void *msgin)
 {
 	const std_msgs__msg__Float32MultiArray *msg = (const std_msgs__msg__Float32MultiArray *)msgin;
 
-	if (msg->data.size == 3)
+	if (msg->data.size == 6)
 	{
 		motorA.setPIDConfig(msg->data.data[0], msg->data.data[1], msg->data.data[2]);
-		motorB.setPIDConfig(msg->data.data[0], msg->data.data[1], msg->data.data[2]);
+		motorB.setPIDConfig(msg->data.data[3], msg->data.data[4], msg->data.data[5]);
 	}
 	else
 		Serial.println("Invalid PID parameters received!");
@@ -187,6 +192,15 @@ void update_odometry(float left_rpm, float right_rpm, float dt)
 
 	// Serial.printf("Odometry update: Position (x: %.2f, y: %.2f, theta: %.2f), Linear Velocity: %.2f, Angular Velocity: %.2f\r\n",
 	//             x, y, theta, linear_velocity, angular_velocity);
+}
+
+void log_to_topic(const char* log_message) {
+    // Формируем сообщение
+    snprintf(log_msg.data.data, log_msg.data.capacity, "%s", log_message);
+    log_msg.data.size = strlen(log_msg.data.data);
+
+    // Публикуем сообщение в топик
+    RCSOFTCHECK(rcl_publish(&log_publisher, &log_msg, NULL));
 }
 
 void odometry_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
@@ -308,10 +322,10 @@ void init_msgs_odometry()
 	odom_msg.header.frame_id.data = new char[odom_msg.header.frame_id.capacity];
 	odom_msg.header.frame_id = micro_ros_string_utilities_init("odom");
 
-	odom_msg.child_frame_id.capacity = 8;
-	odom_msg.child_frame_id.size = 7;
-	odom_msg.child_frame_id.data = new char[odom_msg.child_frame_id.capacity];
-	odom_msg.child_frame_id = micro_ros_string_utilities_init("base_link");
+	// odom_msg.child_frame_id.capacity = 8;
+	// odom_msg.child_frame_id.size = 7;
+	// odom_msg.child_frame_id.data = new char[odom_msg.child_frame_id.capacity];
+	// odom_msg.child_frame_id = micro_ros_string_utilities_init("base_link");
 
 	odom_msg.pose.covariance[0] = 0.1; // Примерные значения ковариации
 	odom_msg.pose.covariance[7] = 0.1;
@@ -348,11 +362,11 @@ void init_msgs_laserscan()
 	lidar_msg.ranges.size = LIDAR_DATA_SIZE;
 	lidar_msg.ranges.data = new float[lidar_msg.ranges.capacity];
 
-#ifdef LIDAR_INTENSITY
+	#ifdef LIDAR_INTENSITY
 // lidar_msg.intensities.capacity = lidar_msg.ranges.capacity;
 // lidar_msg.intensities.size = lidar_msg.intensities.capacity;
 // lidar_msg.intensities.data = new float[lidar_msg.intensities.capacity];
-#endif
+	#endif
 
 	lidar_msg.angle_min = -2 * M_PI;
 	lidar_msg.angle_max = 0;
@@ -412,7 +426,7 @@ void MicroRosController::microrosTask(void *pvParameters)
 	RCCHECK(rclc_timer_init_default(
 		&odom_timer,
 		&support,
-		RCL_MS_TO_NS(settings.odom_timer_delay),
+		RCL_MS_TO_NS(settings.odom_delay),
 		odometry_timer_callback));
 
 	RCCHECK(rclc_publisher_init_default(
@@ -424,7 +438,7 @@ void MicroRosController::microrosTask(void *pvParameters)
 	RCCHECK(rclc_timer_init_default(
 		&imu_timer,
 		&support,
-		RCL_MS_TO_NS(settings.imu_timer_delay),
+		RCL_MS_TO_NS(settings.imu_delay),
 		imu_timer_callback));
 
 	RCCHECK(rclc_publisher_init_default(
@@ -436,8 +450,14 @@ void MicroRosController::microrosTask(void *pvParameters)
 	RCCHECK(rclc_timer_init_default(
 		&lidar_timer,
 		&support,
-		RCL_MS_TO_NS(settings.lidar_timer_delay),
+		RCL_MS_TO_NS(settings.lidar_delay),
 		lidar_timer_callback));
+
+	RCCHECK(rclc_publisher_init_default(
+		&log_publisher,
+		&node,
+		ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
+		"/logs"));
 
 	init_msgs_laserscan();
 	init_msgs_imu();
@@ -451,7 +471,8 @@ void MicroRosController::microrosTask(void *pvParameters)
 	RCCHECK(rclc_executor_add_timer(&executor, &imu_timer));
 	RCCHECK(rclc_executor_add_timer(&executor, &lidar_timer));
 
-	msg.data = 0;
+	//rcutils_logging_set_output_handler(rcutils_logging_output_handler);
+  	//rcutils_logging_set_default_logger_level(RCUTILS_LOG_SEVERITY_INFO);
 
 	lidar = new DreameLidar(&Serial2);
 	lidar->startTask();
@@ -482,6 +503,11 @@ void MicroRosController::microrosTask(void *pvParameters)
 					DMP_FEATURE_SEND_RAW_ACCEL,
 					10);
 	imu.dmpSetOrientation(orientationDefault);
+
+	// Инициализация сообщения
+    log_msg.data.data = (char *)malloc(256 * sizeof(char));
+    log_msg.data.capacity = 256;
+    log_msg.data.size = 0;
 
 	Serial.println("ROS started!");
 	while (true)
