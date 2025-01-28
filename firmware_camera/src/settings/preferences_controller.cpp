@@ -17,6 +17,8 @@ void PreferencesController::preferencesTask(void *pvParameters) {
 	settings.usb_delay = 1000 / portTICK_PERIOD_MS;
 	settings.access_key = ACCESS_KEY;
 
+	settings.ros_enabled = 1;
+
 	DECLARE_SETTING_TYPES_LINKS_VARIANT(UNIQUE_SETTINGS_TYPES) setting;
 	void* buffer;
 

@@ -10,11 +10,12 @@ void setup()
 	while(settings.turtle_id == 0) // Ожидаем загрузки настроек в ОЗУ
 		vTaskDelay(100);
 
-	xTaskCreate(WirelessController::wirelessTask, "Wireless task", 20000, NULL, 2, NULL);
+	xTaskCreate(WirelessController::wirelessTask, "Wireless task", 16384, NULL, 2, NULL);
 	xTaskCreate(UsbController::usbTask, "USB task", 4096, NULL, 2, NULL);
 
 	while (WiFi.status() != WL_CONNECTED)
 		delay(500);
 	
-	xTaskCreate(MicroRosController::microrosTask, "microROS task", 20000, NULL, 2, NULL);
+	if (settings.ros_enabled)
+		xTaskCreate(MicroRosController::microrosTask, "microROS task", 16384, NULL, 2, NULL);
 }

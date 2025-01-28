@@ -32,8 +32,8 @@ static camera_config_t camera_config = {
     .pixel_format = PIXFORMAT_JPEG,
     .frame_size = FRAMESIZE_VGA,
     .jpeg_quality = 10,
-    .fb_count = 3,
-    .grab_mode = CAMERA_GRAB_WHEN_EMPTY
+    .fb_count = 1,
+    .grab_mode = CAMERA_GRAB_LATEST
 };
 
 void send_image() 
@@ -125,7 +125,7 @@ void MicroRosController::microrosTask(void *pvParameters)
         "/camera/image_raw"
     ));
 
-    const unsigned int timer_timeout = 20;
+    const unsigned int timer_timeout = 10;
     RCCHECK(rclc_timer_init_default(
         &image_timer,
         &support,
@@ -162,8 +162,7 @@ void MicroRosController::microrosTask(void *pvParameters)
     image_msg.format.capacity = 5;
     #endif
 
-    Serial.println("Initialization microROS complete!");
-	
+	Serial.println("ROS started!");
     while(true) {
 	    RCSOFTCHECK(rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100)));
         vTaskDelay(1);
