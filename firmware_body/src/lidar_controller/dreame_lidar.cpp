@@ -1,4 +1,4 @@
-#include "microros/dreame_lidar.hpp"
+#include "lidar_controller/dreame_lidar.hpp"
 
 DreameLidar::DreameLidar(HardwareSerial *serial, int dataSize, bool isInvert)
     : serial(serial), dataSize(dataSize), isInvert(isInvert), writePos(0), dataObtained(false), rpm(0) {
@@ -6,12 +6,12 @@ DreameLidar::DreameLidar(HardwareSerial *serial, int dataSize, bool isInvert)
     distance = new uint16_t[dataSize];
     intensity = new uint8_t[dataSize];
 
-    this->serial->begin(115200);
-    lock = xSemaphoreCreateMutex();
+    this->serial->begin(LIDAR_BAUDRATE);
+    dataLock = xSemaphoreCreateMutex();
 }
 
 void DreameLidar::getDataUnit() {
-    // Reading header
+    // Чтение заголовка
     uint8_t header[] = {0x55, 0xAA, 0x03, 0x08};
     int headerPos = 0;
     while (true) {
@@ -27,13 +27,14 @@ void DreameLidar::getDataUnit() {
         }
     }
 
-    // Read rotation speed and start angle
+    // Чтение скорости, углов
     uint16_t rotationSpeedTmp, startAngleTmp;
     this->serial->readBytes((uint8_t*)&rotationSpeedTmp, 2);
     this->serial->readBytes((uint8_t*)&startAngleTmp, 2);
     rpm = rotationSpeedTmp / 64.0;
     float startAngle = (startAngleTmp - 0xA000) / 64.0;
 
+    // Чтение дистанции
     uint16_t distanceTmp[8];
     uint8_t intensityTmp[8];
     for (int i = 0; i < 8; i++) {
@@ -44,13 +45,14 @@ void DreameLidar::getDataUnit() {
         intensityTmp[i] = data[2];
     }
 
+    // Чтения окончания пакета
     uint16_t endAngleTmp, crc;
     this->serial->readBytes((uint8_t*)&endAngleTmp, 2);
     this->serial->readBytes((uint8_t*)&crc, 2);
     float endAngle = (endAngleTmp - 0xA000) / 64.0;
 
-    // Update data
-    if (xSemaphoreTake(lock, portMAX_DELAY) == pdTRUE) {
+    // Обновление данных
+    if (xSemaphoreTake(dataLock, portMAX_DELAY) == pdTRUE) {
         float startAngleRad = startAngle * M_PI / 180 * (isInvert ? -1 : 1);
         float endAngleRad = endAngle * M_PI / 180 * (isInvert ? -1 : 1);
         float angleIncrement = (endAngleRad - startAngleRad) / 8.0;
@@ -68,11 +70,11 @@ void DreameLidar::getDataUnit() {
                 this->dataObtained = true;
             }
         }
-        xSemaphoreGive(lock);
+        xSemaphoreGive(dataLock);
     }
 }
 
-void DreameLidar::getData(void* param) {
+void DreameLidar::lidarTask(void* param) {
     DreameLidar* self = static_cast<DreameLidar*>(param);
     
     while (true) {
@@ -80,8 +82,4 @@ void DreameLidar::getData(void* param) {
 
         vTaskDelay(1);
     }
-}
-
-void DreameLidar::startTask() {
-    xTaskCreate(getData, "lidar_data_task", 8196, this, 1, NULL);
 }

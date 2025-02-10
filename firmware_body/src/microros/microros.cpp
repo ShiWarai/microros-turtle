@@ -1,11 +1,7 @@
 #include "microros/microros.hpp"
-#include <std_msgs/msg/string.h>
-#include <stdio.h>
 
 
 // Распиновка
-constexpr uint8_t INTERRUPT_PIN_MPU = 5;
-
 constexpr uint8_t ENCODER_M1_A = 27;
 constexpr uint8_t ENCODER_M1_B = 26;
 
@@ -13,8 +9,8 @@ constexpr uint8_t EN_M1 = 13;
 constexpr uint8_t IN1_M1 = 12;
 constexpr uint8_t IN2_M1 = 14;
 
-constexpr uint8_t ENCODER_M2_A = 25;
-constexpr uint8_t ENCODER_M2_B = 33;
+constexpr uint8_t ENCODER_M2_B = 25;
+constexpr uint8_t ENCODER_M2_A = 33;
 
 constexpr uint8_t EN_M2 = 18;
 constexpr uint8_t IN1_M2 = 21;
@@ -280,7 +276,7 @@ void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
 	if (lidar->dataObtained)
 	{
-		if (xSemaphoreTake(lidar->lock, portMAX_DELAY) == pdTRUE)
+		if (xSemaphoreTake(lidar->dataLock, portMAX_DELAY) == pdTRUE)
 		{
 			for(size_t i = 0; i < lidar_msg.ranges.capacity; i++)
 				lidar_msg.ranges.data[i] = 0;
@@ -301,7 +297,7 @@ void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 			}
 
 			lidar->dataObtained = false; // Сбрасываем флаг после вывода данных
-			xSemaphoreGive(lidar->lock);
+			xSemaphoreGive(lidar->dataLock);
 			
 			RCSOFTCHECK(rcl_publish(&lidar_publisher, &lidar_msg, NULL));
 		}
@@ -310,8 +306,8 @@ void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 
 void init_msgs_params()
 {
-	params_msg.data.capacity = 3;
-	params_msg.data.size = 3;
+	params_msg.data.capacity = 6;
+	params_msg.data.size = 6;
 	params_msg.data.data = new float[params_msg.data.capacity];
 }
 
@@ -475,7 +471,7 @@ void MicroRosController::microrosTask(void *pvParameters)
   	//rcutils_logging_set_default_logger_level(RCUTILS_LOG_SEVERITY_INFO);
 
 	lidar = new DreameLidar(&Serial2);
-	lidar->startTask();
+	xTaskCreate(DreameLidar::lidarTask, "lidar_data_task", 8196, lidar, 1, NULL);
 
 	INIT_ENCODER_WITH_NAME(LEFT, ENCODER_M1_A, ENCODER_M1_B)
 	INIT_ENCODER_WITH_NAME(RIGHT, ENCODER_M2_A, ENCODER_M2_B)

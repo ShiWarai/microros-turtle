@@ -51,7 +51,7 @@ void MotorController::update()
 
 	setPWM(pidPWM);
 
-	//Serial.printf("C: %f, %f, %f\r\n", measuredRPM, targetRPM, pidPWM);
+	// Serial.printf("C: %f, %f, %f\r\n", measuredRPM, targetRPM, pidPWM);
 }
 
 void MotorController::setPWM(float value)

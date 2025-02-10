@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <stdio.h>
 #include <micro_ros_platformio.h>
 #include <rcl/rcl.h>
 #include <rclc/rclc.h>
@@ -10,6 +11,7 @@
 #include <std_msgs/msg/float32_multi_array.h>
 #include <nav_msgs/msg/odometry.h>
 #include <geometry_msgs/msg/quaternion.h>
+#include <std_msgs/msg/string.h>
 #include <micro_ros_utilities/string_utilities.h>
 #include <sensor_msgs/msg/imu.h>
 #include <sensor_msgs/msg/laser_scan.h>
@@ -19,7 +21,7 @@
 
 #include "motor_controller/motor_controller.hpp"
 #include "settings/settings.hpp"
-#include "dreame_lidar.hpp"
+#include "lidar_controller/dreame_lidar.hpp"
 
 
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){ Serial.printf("Error: %d\r\n", temp_rc); error_loop(); }}
