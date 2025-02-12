@@ -22,8 +22,8 @@ class ImageViewer(Node):
         image_np = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
         if image_np is not None:
-            # Rotate the image 90 degrees clockwise
-            image_np = cv2.rotate(image_np, cv2.ROTATE_90_CLOCKWISE)
+            # # Rotate the image 90 degrees clockwise
+            # image_np = cv2.rotate(image_np, cv2.ROTATE_90_CLOCKWISE)
             
             cv2.imshow("ESP32-CAM Image", image_np)
             cv2.waitKey(1)

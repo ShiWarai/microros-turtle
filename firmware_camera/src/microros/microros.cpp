@@ -143,6 +143,18 @@ void MicroRosController::microrosTask(void *pvParameters)
     esp_err_t err = esp_camera_init(&camera_config);
     if (err != ESP_OK) {
         Serial.println("Camera init failed");
+    } else { // Устанавливаем пользовательский размер изображения
+        // sensor_t *s = esp_camera_sensor_get();
+        // if (s && s->set_res_raw) {
+        //     s->set_res_raw(s, 
+        //                    NULL, NULL,         // startX, startY
+        //                    NULL, NULL,     // endX, endY
+        //                    0, 0,         // offsetX, offsetY
+        //                    1200, 1200,     // totalX, totalY
+        //                    240, 240,     // outputX, outputY
+        //                    true,         // scale
+        //                    true);       // binning
+        // }
     }
 
     // Allocate initial memory for the img_msg (will be resized later if needed)
