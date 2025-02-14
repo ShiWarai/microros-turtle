@@ -23,9 +23,7 @@
 #include "settings/settings.hpp"
 #include "lidar_controller/dreame_lidar.hpp"
 
-
-#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){ Serial.printf("Error: %d\r\n", temp_rc); error_loop(); }}
-#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)) {}}
+#define RANGES_SIZE 360
 
 class MicroRosController
 {

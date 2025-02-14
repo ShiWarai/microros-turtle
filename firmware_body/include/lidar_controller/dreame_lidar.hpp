@@ -5,7 +5,7 @@
 #include <freertos/task.h>
 #include <freertos/semphr.h>
 
-#define LIDAR_DATA_SIZE 360
+#define LIDAR_DATA_SIZE 720
 #define LIDAR_BAUDRATE 115200
 
 class DreameLidar {
@@ -22,9 +22,10 @@ public:
     bool dataObtained;
     SemaphoreHandle_t dataLock;
 private:
-    void getDataUnit();
+    void getData();
 
     HardwareSerial *serial;
     int writePos;
     bool isInvert;
+    float preStartAngle = 0;
 };

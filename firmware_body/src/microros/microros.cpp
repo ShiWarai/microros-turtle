@@ -1,5 +1,7 @@
 #include "microros/microros.hpp"
 
+#define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){ Serial.printf("Error: %d\r\n", temp_rc); error_loop(); }}
+#define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)) {}}
 
 // Распиновка
 constexpr uint8_t ENCODER_M1_A = 27;
@@ -69,8 +71,6 @@ float theta = 0.0f; // Ориентация (рад)
 // Ориентация по умолчанию (в 3D)
 const signed char orientationDefault[9] = {0, 1, 0, 0, 0, 1, 1, 0, 0};
 
-// volatile bool interrupt = false;
-
 IPAddress getIPAddressByHostname(const char *hostname)
 {
 	IPAddress remote_ip;
@@ -84,6 +84,14 @@ IPAddress getIPAddressByHostname(const char *hostname)
 		Serial.println("Failed to resolve hostname");
 		return IPAddress(0, 0, 0, 0);
 	}
+}
+
+float normalize_angle(float angle) {
+    angle = fmod(angle, 2.0 * M_PI); // Приводим угол к диапазону от -2π до 2π
+    if (angle < 0) {
+        angle += 2.0 * M_PI; // Приводим угол к диапазону от 0 до 2π
+    }
+    return angle;
 }
 
 void error_loop()
@@ -272,6 +280,7 @@ void imu_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 	imu_update();
 }
 
+constexpr const float RAD_TO_ITER = RAD_TO_DEG * (RANGES_SIZE / 360.0);
 void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
 	if (lidar->dataObtained)
@@ -281,17 +290,19 @@ void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 			for(size_t i = 0; i < lidar_msg.ranges.capacity; i++)
 				lidar_msg.ranges.data[i] = 0;
 
-			int deg;
 			lidar_msg.header.stamp.nanosec = esp_timer_get_time() * 1000;
 
 			for (int i = 0; i < lidar->dataSize; i++)
 			{
-				deg = round(-lidar->theta[i] * 180.0 / M_PI);
-				if (lidar->theta[i] < lidar_msg.angle_max && lidar->theta[i] > lidar_msg.angle_min)
-				{
-					lidar_msg.ranges.data[deg] = ((float)lidar->distance[i]) / 1000.0;
+				// if(lidar->intensity[i] <= lidar_msg.range_max && lidar->intensity[i] >= lidar_msg.range_min)
+				// 	continue;
+					
+				uint16_t j = round(normalize_angle(lidar->theta[i]) * RAD_TO_ITER);
+				
+				if(j < lidar_msg.ranges.capacity) {
+					lidar_msg.ranges.data[j] = lidar->distance[i] / 1000.0;
 					#ifdef LIDAR_INTENSITY
-					lidar_msg.intensities.data[deg] = lidar->intensity[i];
+					lidar_msg.intensities.data[j] = lidar->intensity[i];
 					#endif
 				}
 			}
@@ -316,7 +327,7 @@ void init_msgs_odometry()
 	odom_msg.header.frame_id.capacity = 12;
 	odom_msg.header.frame_id.size = 11;
 	odom_msg.header.frame_id.data = new char[odom_msg.header.frame_id.capacity];
-	odom_msg.header.frame_id = micro_ros_string_utilities_init("odom");
+	odom_msg.header.frame_id = micro_ros_string_utilities_init("odom_frame");
 
 	// odom_msg.child_frame_id.capacity = 8;
 	// odom_msg.child_frame_id.size = 7;
@@ -343,7 +354,7 @@ void init_msgs_imu()
 	imu_msg.header.frame_id.capacity = 12;
 	imu_msg.header.frame_id.size = 11;
 	imu_msg.header.frame_id.data = new char[imu_msg.header.frame_id.capacity];
-	imu_msg.header.frame_id = micro_ros_string_utilities_init("imu_link");
+	imu_msg.header.frame_id = micro_ros_string_utilities_init("imu_frame");
 }
 
 void init_msgs_laserscan()
@@ -352,23 +363,23 @@ void init_msgs_laserscan()
 	lidar_msg.header.frame_id.size = 11;
 	lidar_msg.header.frame_id.data = new char[lidar_msg.header.frame_id.capacity];
 
-	lidar_msg.header.frame_id = micro_ros_string_utilities_init("laser_frame");
+	lidar_msg.header.frame_id = micro_ros_string_utilities_init("lidar_frame");
 
-	lidar_msg.ranges.capacity = LIDAR_DATA_SIZE;
-	lidar_msg.ranges.size = LIDAR_DATA_SIZE;
+	lidar_msg.ranges.capacity = RANGES_SIZE;
+	lidar_msg.ranges.size = lidar_msg.ranges.capacity;
 	lidar_msg.ranges.data = new float[lidar_msg.ranges.capacity];
 
 	#ifdef LIDAR_INTENSITY
-// lidar_msg.intensities.capacity = lidar_msg.ranges.capacity;
-// lidar_msg.intensities.size = lidar_msg.intensities.capacity;
-// lidar_msg.intensities.data = new float[lidar_msg.intensities.capacity];
+	lidar_msg.intensities.capacity = lidar_msg.ranges.capacity;
+	lidar_msg.intensities.size = lidar_msg.intensities.capacity;
+	lidar_msg.intensities.data = new float[lidar_msg.intensities.capacity];
 	#endif
 
-	lidar_msg.angle_min = -2 * M_PI;
-	lidar_msg.angle_max = 0;
+	lidar_msg.angle_min = 0;
+	lidar_msg.angle_max = 2 * M_PI;
 	lidar_msg.angle_increment = 2 * M_PI / lidar_msg.ranges.capacity;
-	lidar_msg.range_min = 0.01;
-	lidar_msg.range_max = 10.0;
+	lidar_msg.range_min = 0.001;
+	lidar_msg.range_max = 2.0;
 }
 
 void MicroRosController::microrosTask(void *pvParameters)
@@ -376,7 +387,7 @@ void MicroRosController::microrosTask(void *pvParameters)
 	IPAddress agent_ip_address = IPAddress();
 	agent_ip_address.fromString(settings.agent_ip);
 
-#ifdef AGENT_IP
+	#ifdef AGENT_IP
 	static struct micro_ros_agent_locator locator;
 	locator.address = agent_ip_address;
 	locator.port = settings.agent_port;
@@ -388,10 +399,10 @@ void MicroRosController::microrosTask(void *pvParameters)
 		platformio_transport_close,
 		platformio_transport_write,
 		platformio_transport_read);
-#else
-#error "NEED FIX THIS BLOCK"
-	set_microros_wifi_transports(WIFI_SSID, WIFI_PASSWORD, getIPAddressByHostname(AGENT_HOSTNAME), AGENT_PORT);
-#endif
+	#else
+		#error "NEED FIX THIS BLOCK"
+		set_microros_wifi_transports(WIFI_SSID, WIFI_PASSWORD, getIPAddressByHostname(AGENT_HOSTNAME), AGENT_PORT);
+	#endif
 
 	allocator = rcl_get_default_allocator();
 
@@ -476,8 +487,8 @@ void MicroRosController::microrosTask(void *pvParameters)
 	INIT_ENCODER_WITH_NAME(LEFT, ENCODER_M1_A, ENCODER_M1_B)
 	INIT_ENCODER_WITH_NAME(RIGHT, ENCODER_M2_A, ENCODER_M2_B)
 
-	motorA.setPIDConfig(20.0, 0.03, 500.0);
-	motorB.setPIDConfig(20.0, 0.03, 500.0);
+	motorA.setPIDConfig(20.0, 0.0, 0.0);
+	motorB.setPIDConfig(20.0, 0.0, 0.0);
 
 	Wire.begin(22, 23); // 22 - SDA, 23 - SCL
 	if (imu.begin() != INV_SUCCESS)
@@ -486,7 +497,6 @@ void MicroRosController::microrosTask(void *pvParameters)
 		{
 			Serial.println("Unable to communicate with MPU-9250");
 			Serial.println("Check connections, and try again.");
-			Serial.println();
 			delay(1000);
 		}
 	}
