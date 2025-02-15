@@ -20,6 +20,7 @@ void PreferencesController::preferencesTask(void *pvParameters) {
 	settings.odom_delay = 100;
 	settings.lidar_delay = 100;
 	settings.imu_delay = 50;
+	settings.logger_delay = 100;
 
 	DECLARE_SETTING_TYPES_LINKS_VARIANT(UNIQUE_SETTINGS_TYPES) setting;
 	void* buffer;

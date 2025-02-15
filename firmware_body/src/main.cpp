@@ -1,6 +1,4 @@
 #include "main.hpp"
-#include "math.h"
-#include <SparkFunMPU9250-DMP.h>
 
 void setup()
 {
@@ -12,6 +10,7 @@ void setup()
   while (settings.turtle_id == 0) // Ожидаем загрузки настроек в ОЗУ
     vTaskDelay(100);
 
+  MicroROSLogger::init();
   xTaskCreate(WirelessController::wirelessTask, "Wireless task", 16384, NULL, 2, NULL);
   xTaskCreate(UsbController::usbTask, "USB task", 4096, NULL, 2, NULL);
 

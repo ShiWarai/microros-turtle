@@ -4,6 +4,7 @@
 #include <nvs_flash.h>
 #include <soc/soc.h>
 #include <soc/rtc_cntl_reg.h>
+#include "microros/microros_logger.hpp"
 #include "microros/microros.hpp"
 #include "webserver/webserver.hpp"
 #include "settings/preferences_controller.hpp"

@@ -15,6 +15,7 @@
 #include <micro_ros_utilities/string_utilities.h>
 #include <sensor_msgs/msg/imu.h>
 #include <sensor_msgs/msg/laser_scan.h>
+#include <rcl_interfaces/msg/log.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <SparkFunMPU9250-DMP.h>
@@ -22,6 +23,7 @@
 #include "motor_controller/motor_controller.hpp"
 #include "settings/settings.hpp"
 #include "lidar_controller/dreame_lidar.hpp"
+#include "microros_logger.hpp"
 
 #define RANGES_SIZE 360
 

@@ -56,7 +56,8 @@ rcl_timer_t imu_timer;
 sensor_msgs__msg__Imu imu_msg;
 
 rcl_publisher_t log_publisher;
-std_msgs__msg__String log_msg;
+rcl_timer_t log_timer;
+rcl_interfaces__msg__Log log_msg;
 
 rclc_executor_t executor;
 rclc_support_t support;
@@ -198,15 +199,6 @@ void update_odometry(float left_rpm, float right_rpm, float dt)
 	//             x, y, theta, linear_velocity, angular_velocity);
 }
 
-void log_to_topic(const char* log_message) {
-    // Формируем сообщение
-    snprintf(log_msg.data.data, log_msg.data.capacity, "%s", log_message);
-    log_msg.data.size = strlen(log_msg.data.data);
-
-    // Публикуем сообщение в топик
-    RCSOFTCHECK(rcl_publish(&log_publisher, &log_msg, NULL));
-}
-
 void odometry_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
 	motorA.update();
@@ -232,11 +224,10 @@ void odometry_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 	}
 }
 
-void imu_update()
+void imu_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
 	unsigned short fifoCnt;
 	inv_error_t result;
-
 	
 	fifoCnt = imu.fifoAvailable();
 
@@ -275,12 +266,7 @@ void imu_update()
 	}
 }
 
-void imu_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
-{
-	imu_update();
-}
-
-constexpr const float RAD_TO_ITER = RAD_TO_DEG * (RANGES_SIZE / 360.0);
+constexpr float RAD_TO_ITER = RAD_TO_DEG * (RANGES_SIZE / 360.0);
 void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
 	if (lidar->dataObtained)
@@ -311,6 +297,28 @@ void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 			xSemaphoreGive(lidar->dataLock);
 			
 			RCSOFTCHECK(rcl_publish(&lidar_publisher, &lidar_msg, NULL));
+		}
+
+		MicroROSLogger::log("Success", LogLevel::INFO);
+	}
+}
+
+void logger_timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
+	if(MicroROSLogger::hasLogMessages()) {
+		LogMessage log = MicroROSLogger::getNextLogMessage();
+		
+		if(log.message.length() < log_msg.msg.capacity) {
+			log_msg.msg.data = (char*) log.message.c_str();
+			log_msg.msg.size = strlen(log_msg.msg.data);
+
+			log_msg.name.data = "Log from MicroROS";
+			log_msg.name.size = strlen(log_msg.name.data);
+
+			log_msg.level = (uint8_t) log.level;
+
+			log_msg.stamp.nanosec = esp_timer_get_time() * 1000;
+
+			RCSOFTCHECK(rcl_publish(&log_publisher, &log_msg, NULL));
 		}
 	}
 }
@@ -380,6 +388,26 @@ void init_msgs_laserscan()
 	lidar_msg.angle_increment = 2 * M_PI / lidar_msg.ranges.capacity;
 	lidar_msg.range_min = 0.001;
 	lidar_msg.range_max = 2.0;
+}
+
+void init_msgs_logger() {
+	log_msg.name.capacity = 32;
+	log_msg.name.size = 0;
+	log_msg.name.data = (char *)malloc(log_msg.name.capacity * sizeof(char));
+
+	log_msg.msg.capacity = 256;
+	log_msg.msg.size = 0;
+	log_msg.msg.data = (char *)malloc(log_msg.msg.capacity * sizeof(char));
+
+	log_msg.file.capacity = 32;
+	log_msg.file.size = 0;
+	log_msg.file.data = (char *)malloc(log_msg.file.capacity * sizeof(char));
+	log_msg.file.data = "microros.cpp";
+	
+	// log_msg.function.capacity = 32;
+	// log_msg.function.size = 0;
+	// log_msg.function.data = (char *)malloc(log_msg.msg.capacity * sizeof(char));
+	// log_msg.function.data = "log(String msg)";
 }
 
 void MicroRosController::microrosTask(void *pvParameters)
@@ -463,23 +491,29 @@ void MicroRosController::microrosTask(void *pvParameters)
 	RCCHECK(rclc_publisher_init_default(
 		&log_publisher,
 		&node,
-		ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
-		"/logs"));
+		ROSIDL_GET_MSG_TYPE_SUPPORT(rcl_interfaces, msg, Log),
+		"/rosout"));
+
+	RCCHECK(rclc_timer_init_default(
+		&log_timer,
+		&support,
+		RCL_MS_TO_NS(settings.logger_delay),
+		logger_timer_callback));
 
 	init_msgs_laserscan();
 	init_msgs_imu();
 	init_msgs_odometry();
 	init_msgs_params();
+	init_msgs_logger();
 
-	RCCHECK(rclc_executor_init(&executor, &support.context, 5, &allocator)); // create executor
+	RCCHECK(rclc_executor_init(&executor, &support.context, 6, &allocator)); // create executor
 	RCCHECK(rclc_executor_add_subscription(&executor, &cmd_vel_subscriber, &cmd_vel_msg, &cmd_vel_callback, ON_NEW_DATA));
 	RCCHECK(rclc_executor_add_subscription(&executor, &params_subscriber, &params_msg, &params_callback, ON_NEW_DATA));
 	RCCHECK(rclc_executor_add_timer(&executor, &odom_timer));
 	RCCHECK(rclc_executor_add_timer(&executor, &imu_timer));
 	RCCHECK(rclc_executor_add_timer(&executor, &lidar_timer));
+	RCCHECK(rclc_executor_add_timer(&executor, &log_timer));
 
-	//rcutils_logging_set_output_handler(rcutils_logging_output_handler);
-  	//rcutils_logging_set_default_logger_level(RCUTILS_LOG_SEVERITY_INFO);
 
 	lidar = new DreameLidar(&Serial2);
 	xTaskCreate(DreameLidar::lidarTask, "lidar_data_task", 8196, lidar, 1, NULL);
@@ -493,27 +527,19 @@ void MicroRosController::microrosTask(void *pvParameters)
 	Wire.begin(22, 23); // 22 - SDA, 23 - SCL
 	if (imu.begin() != INV_SUCCESS)
 	{
-		while (true)
-		{
-			Serial.println("Unable to communicate with MPU-9250");
-			Serial.println("Check connections, and try again.");
-			delay(1000);
-		}
+		Serial.println("Unable to communicate with MPU-9250");
+		Serial.println("Check connections, and try again.");
+	} else {
+		imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL);
+		imu.setAccelFSR(2);
+		imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT |
+						DMP_FEATURE_GYRO_CAL |
+						DMP_FEATURE_SEND_CAL_GYRO |
+						DMP_FEATURE_SEND_RAW_ACCEL,
+						10);
+		imu.dmpSetOrientation(orientationDefault);
 	}
-
-	imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL);
-	imu.setAccelFSR(2);
-	imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT |
-					DMP_FEATURE_GYRO_CAL |
-					DMP_FEATURE_SEND_CAL_GYRO |
-					DMP_FEATURE_SEND_RAW_ACCEL,
-					10);
-	imu.dmpSetOrientation(orientationDefault);
-
-	// Инициализация сообщения
-    log_msg.data.data = (char *)malloc(256 * sizeof(char));
-    log_msg.data.capacity = 256;
-    log_msg.data.size = 0;
+	
 
 	Serial.println("ROS started!");
 	while (true)
