@@ -1,5 +1,3 @@
-// Based on https://github.com/kaiaai/firmware/blob/iron/libraries/MotorController
-
 #include "motor_controller/motor_controller.hpp"
 
 MotorController::MotorController(L298N &motorDriver, volatile long &encoder_value, float PPR)
@@ -29,7 +27,6 @@ MotorController::MotorController(L298N &motorDriver, volatile long &encoder_valu
 	pwm = 0;
 }
 
-// TODO detect stuck (stalled) motor, limit current, let robot know
 void MotorController::update()
 {
 	unsigned long tickTime = micros();
@@ -51,13 +48,20 @@ void MotorController::update()
 
 	setPWM(pidPWM);
 
-	// Serial.printf("C: %f, %f, %f\r\n", measuredRPM, targetRPM, pidPWM);
+	char str[128];
+	sprintf(str, "C: %f, %f, %f", measuredRPM, targetRPM, pidPWM);
+	MicroROSLogger::log(str, "update()", "motor_controller.cpp", LogLevel::INFO, false);
 }
 
 void MotorController::setPWM(float value)
 {
-	if (value == pwm || value > 255 || value < -255)
+	if (value == pwm)
 		return;
+
+	if (value > 255)
+		value = 255;
+	else if (value < -255)
+		value = -255;
 
 	motorDriver.setSpeed(abs(value));
 

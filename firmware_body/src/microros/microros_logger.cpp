@@ -10,27 +10,29 @@ void MicroROSLogger::init() {
 }
 
 // Добавление сообщения в очередь
-void MicroROSLogger::log(const String &message, LogLevel level) {
-    LogMessage logMessage = {level, message};
+void MicroROSLogger::log(String message, String func, String file, LogLevel level, bool to_serial_too) {
+    LogMessage logMessage;
+
+    logMessage.level = level;
+    strcpy(logMessage.message, message.c_str());
+    strcpy(logMessage.func, func.c_str());
+    strcpy(logMessage.file, file.c_str());
+
+    if(to_serial_too)
+        Serial.printf("[%s] from %s: %s\r\n", logMessage.file, logMessage.func, logMessage.message);
 
     if (logMutex != nullptr && xSemaphoreTake(logMutex, portMAX_DELAY)) {
-        if (xQueueSend(logQueue, &logMessage, 0) != pdPASS) {
-            Serial.println("Failed to send message to queue!");
-        }
+        xQueueSend(logQueue, &logMessage, 0);
         xSemaphoreGive(logMutex);
     }
 }
 
 // Получение следующего сообщения из очереди
 LogMessage MicroROSLogger::getNextLogMessage() {
-    LogMessage logMessage = {LogLevel::DEBUG, ""};
+    LogMessage logMessage;
 
     if (logMutex != nullptr && xSemaphoreTake(logMutex, portMAX_DELAY)) {
-        if (xQueueReceive(logQueue, &logMessage, 0) == pdPASS) {
-            // Сообщение успешно получено
-        } else {
-            Serial.println("No messages in queue!");
-        }
+        xQueueReceive(logQueue, &logMessage, 0);
         xSemaphoreGive(logMutex);
     }
 

@@ -6,6 +6,9 @@
 #include <freertos/semphr.h>
 
 #define QUEUE_LENGTH 10
+#define MESSAGE_LENGTH 256
+#define FUNC_LENGTH 32
+#define FILE_LENGTH 32
 
 enum class LogLevel {
     DEBUG,
@@ -17,13 +20,15 @@ enum class LogLevel {
 
 struct LogMessage {
     LogLevel level;
-    String message;
+    char file[FILE_LENGTH];
+    char func[FUNC_LENGTH];
+    char message[MESSAGE_LENGTH];
 };
 
 class MicroROSLogger {
 public:
     static void init(); // Инициализация очереди и мьютекса
-    static void log(const String &message, LogLevel level = LogLevel::INFO);
+    static void log(String message, String func = "", String file = "", LogLevel level = LogLevel::INFO, bool to_serial_too = true);
     static LogMessage getNextLogMessage();
     static bool hasLogMessages();
 

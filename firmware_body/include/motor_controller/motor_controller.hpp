@@ -8,6 +8,8 @@
 
 #include "encoder.hpp"
 
+#include "microros/microros_logger.hpp"
+
 #define MAX_RPM 300
 
 class MotorController
