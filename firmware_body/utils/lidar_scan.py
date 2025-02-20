@@ -6,18 +6,23 @@ import matplotlib.pyplot as plt
 import math
 import tf2_ros
 import tf_transformations
+from rclpy.qos import QoSProfile, ReliabilityPolicy
 
 class LidarCartesianPlot(Node):
 
     def __init__(self):
         super().__init__('lidar_cartesian_plot')
 
+        # Set QoS profile
+        qos_profile = QoSProfile(depth=10)
+        qos_profile.reliability = ReliabilityPolicy.BEST_EFFORT
+
         # Подписка на топик /lidar с типом LaserScan
         self.subscription = self.create_subscription(
             LaserScan,
             '/lidar',  # Имя топика LiDAR
             self.lidar_callback,
-            10)
+            qos_profile)
 
         # Инициализация трансформаций
         self.tf_buffer = tf2_ros.Buffer()
@@ -65,7 +70,7 @@ class LidarCartesianPlot(Node):
         # Генерация точек в декартовых координатах
         for i, distance in enumerate(ranges):
             # Проверка на корректность расстояния
-            if msg.intensities[i] >= 5 and not np.isinf(distance) and distance <= range_max and distance >= range_min:
+            if msg.intensities[i] >= 3 and not np.isinf(distance) and distance <= range_max and distance >= range_min:
                 angle = angle_min + i * angle_increment
                 x = distance * np.cos(angle)  # Преобразование в декартовы координаты
                 y = distance * np.sin(angle)

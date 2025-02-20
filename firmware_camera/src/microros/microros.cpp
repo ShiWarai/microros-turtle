@@ -118,11 +118,17 @@ void MicroRosController::microrosTask(void *pvParameters)
 	// create node
 	RCCHECK(rclc_node_init_default(&node, String("cam_node_tutle_" + settings.turtle_id).c_str(), "", &support));
 
-	RCCHECK(rclc_publisher_init_default(
+	// QoS settings
+	rmw_qos_profile_t camera_qos = rmw_qos_profile_default;
+	camera_qos.durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+	camera_qos.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+    
+	RCCHECK(rclc_publisher_init(
         &image_publisher,
         &node,
         ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_micro_msgs, msg, CompressedImage),
-        "/camera/image_raw"
+        "/camera/image_raw",
+        &camera_qos
     ));
 
     const unsigned int timer_timeout = 10;

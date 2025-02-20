@@ -27,6 +27,8 @@ constexpr float RPM_TO_MPS = 2 * PI * WHEEL_RADIUS / 60.0f; // Констант�
 DECLARE_ENCODER_WITH_NAME(LEFT, ENCODER_M1_A, ENCODER_M1_B)
 DECLARE_ENCODER_WITH_NAME(RIGHT, ENCODER_M2_A, ENCODER_M2_B)
 
+SpeedMatchingController speedMatchingController(0.1f);
+
 // Инициализация microROS
 rcl_publisher_t publisher;
 rcl_subscription_t subscriber;
@@ -108,19 +110,20 @@ void cmd_vel_callback(const void *msgin)
 {
 	const geometry_msgs__msg__Twist *msg = (const geometry_msgs__msg__Twist *)msgin;
 
-	float linear_speed = float(msg->linear.x);	 // Линейная скорость (м/с)
-	float angular_speed = float(msg->angular.z); // Угловая скорость (рад/с)
+    float linear_speed = float(msg->linear.x);   // Линейная скорость (м/с)
+    float angular_speed = float(msg->angular.z); // Угловая скорость (рад/с)
 
-	// Вычисляем целевые скорости колес
-	float left_wheel_rpm = (linear_speed - angular_speed * WHEEL_BASE / 2.0) / RPM_TO_MPS;
-	float right_wheel_rpm = (linear_speed + angular_speed * WHEEL_BASE / 2.0) / RPM_TO_MPS;
+    // Вычисляем целевые скорости колес
+    float left_wheel_rpm = (linear_speed - angular_speed * WHEEL_BASE / 2.0) / RPM_TO_MPS;
+    float right_wheel_rpm = (linear_speed + angular_speed * WHEEL_BASE / 2.0) / RPM_TO_MPS;
 
-	motorA.setTargetRPM(left_wheel_rpm);
-	motorB.setTargetRPM(right_wheel_rpm);
+    motorA.setTargetRPM(left_wheel_rpm);
+    motorB.setTargetRPM(right_wheel_rpm);
 
 	char str[128];
-	sprintf(str, "Linear: %.2f, angular: %.2f, left RPM: %.2f, right RPM: %.2f", linear_speed, angular_speed, left_wheel_rpm, right_wheel_rpm);
-	MicroROSLogger::log(str, "cmd_vel_callback()", "microros.cpp", LogLevel::INFO, false);
+	//sprintf(str, "Linear: %.2f, angular: %.2f, left RPM: %.2f, right RPM: %.2f", linear_speed, angular_speed, left_wheel_rpm, right_wheel_rpm);
+	sprintf(str, "left RPM: %.2f, right RPM: %.2f", left_wheel_rpm, right_wheel_rpm);
+	MicroROSLogger::log(str, "cmd_vel_callback()", "microros.cpp", LogLevel::INFO, true);
 }
 
 void params_callback(const void *msgin)
@@ -152,23 +155,26 @@ void set_orientation(geometry_msgs__msg__Quaternion &orientation, double theta)
 	orientation.w = qw;
 }
 
+volatile int64_t last_time = 0;
+
 void odometry_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
-	motorA.update();
-	motorB.update();
+	int64_t current_time = esp_timer_get_time();
+	float dt = (current_time - last_time); // В секундах
+	last_time = current_time;
+	
+	// Получение данных с моторов
+	float left_rpm = motorA.getCurrentRPM();
+	float right_rpm = motorB.getCurrentRPM();
+
+    // Корректировка скоростей при движении по прямой
+    float correction = speedMatchingController.compute(left_rpm, right_rpm);
+
+	motorA.update(dt, -correction);
+	motorB.update(dt, correction);
 
 	if (timer != NULL)
 	{
-		// Получение данных с моторов
-		float left_rpm = motorA.getCurrentRPM();
-		float right_rpm = motorB.getCurrentRPM();
-
-		// Расчёт времени между вызовами таймера (dt)
-		static int64_t last_time = 0;
-		int64_t current_time = esp_timer_get_time();
-		float dt = (current_time - last_time) / 1e6f; // В секундах
-		last_time = current_time;
-
 		// Конвертируем RPM в линейные скорости
 		float left_velocity = RPM_TO_MPS * left_rpm;   // Левое колесо (м/с)
 		float right_velocity = RPM_TO_MPS * right_rpm; // Правое колесо (м/с)
@@ -182,8 +188,8 @@ void odometry_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 		theta += delta_theta;
 		theta = fmod(theta + 2 * PI, 2 * PI); // Нормализация угла
 
-		float delta_x = linear_velocity * cos(theta) * dt;
-		float delta_y = linear_velocity * sin(theta) * dt;
+		float delta_x = linear_velocity * cos(theta) * dt / 1e6f;
+		float delta_y = linear_velocity * sin(theta) * dt / 1e6f;
 
 		x += delta_x;
 		y += delta_y;
@@ -207,7 +213,7 @@ void odometry_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 		char str[128];
 		sprintf(str, "Left RPM: %.2f, right RPM: %.2f, position (x: %.2f, y: %.2f, theta: %.2f), Linear Velocity: %.2f, Angular Velocity: %.2f",
 					left_rpm, right_rpm, x, y, theta, linear_velocity, angular_velocity);
-		MicroROSLogger::log(str, "odometry_timer_callback()", "microros.cpp", LogLevel::INFO, false);
+		MicroROSLogger::log(str, "odometry_timer_callback()", "microros.cpp", LogLevel::INFO, true);
 
 		odom_msg.header.stamp.nanosec = esp_timer_get_time() * 1000;
 
@@ -429,23 +435,38 @@ void MicroRosController::microrosTask(void *pvParameters)
 	const char* node_name = "body_turtle_" + settings.turtle_id;
 	RCCHECK(rclc_node_init_default(&node, node_name, "", &support));
 
-	RCCHECK(rclc_subscription_init_best_effort(
+	rmw_qos_profile_t cmd_qos = rmw_qos_profile_sensor_data;
+
+	// create topic subs, pubs and timers
+	RCCHECK(rclc_subscription_init(
 		&cmd_vel_subscriber,
 		&node,
 		ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Twist),
-		"/cmd_vel"));
+		"/cmd_vel",
+		&cmd_qos
+	));
 
-	RCCHECK(rclc_subscription_init_best_effort(
+	rmw_qos_profile_t params_qos = rmw_qos_profile_default;
+	params_qos.durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
+	params_qos.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+
+	RCCHECK(rclc_subscription_init(
 		&params_subscriber,
 		&node,
 		ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32MultiArray),
-		"/params"));
+		"/params",
+		&params_qos
+	));
 
-	RCCHECK(rclc_publisher_init_default(
+	rmw_qos_profile_t odometry_qos = rmw_qos_profile_default;
+
+	RCCHECK(rclc_publisher_init(
 		&odom_publisher,
 		&node,
 		ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
-		"/odometry"));
+		"/odometry",
+		&odometry_qos
+	));
 
 	RCCHECK(rclc_timer_init_default(
 		&odom_timer,
@@ -453,11 +474,15 @@ void MicroRosController::microrosTask(void *pvParameters)
 		RCL_MS_TO_NS(settings.odom_delay),
 		odometry_timer_callback));
 
-	RCCHECK(rclc_publisher_init_default(
+	rmw_qos_profile_t imu_qos = rmw_qos_profile_default;
+
+	RCCHECK(rclc_publisher_init(
 		&imu_publisher,
 		&node,
 		ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, Imu),
-		"/imu"));
+		"/imu",
+		&imu_qos
+	));
 
 	RCCHECK(rclc_timer_init_default(
 		&imu_timer,
@@ -465,11 +490,15 @@ void MicroRosController::microrosTask(void *pvParameters)
 		RCL_MS_TO_NS(settings.imu_delay),
 		imu_timer_callback));
 
-	RCCHECK(rclc_publisher_init_default(
+	rmw_qos_profile_t lidar_qos = rmw_qos_profile_default;
+
+	RCCHECK(rclc_publisher_init(
 		&lidar_publisher,
 		&node,
 		ROSIDL_GET_MSG_TYPE_SUPPORT(sensor_msgs, msg, LaserScan),
-		"/lidar"));
+		"/lidar",
+		&lidar_qos
+	));
 
 	RCCHECK(rclc_timer_init_default(
 		&lidar_timer,
@@ -477,15 +506,15 @@ void MicroRosController::microrosTask(void *pvParameters)
 		RCL_MS_TO_NS(settings.lidar_delay),
 		lidar_timer_callback));
 
-	rmw_qos_profile_t rosout_qos_profile = rmw_qos_profile_default;
-	rosout_qos_profile.durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
-	rosout_qos_profile.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+	rmw_qos_profile_t rosout_qos = rmw_qos_profile_services_default;
+	rosout_qos.durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
+	rosout_qos.reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
 
 	RCCHECK(rclc_publisher_init(
 		&log_publisher,
 		&node,
 		ROSIDL_GET_MSG_TYPE_SUPPORT(rcl_interfaces, msg, Log),
-		"/rosout", &rosout_qos_profile));
+		"/rosout", &rosout_qos));
 
 	RCCHECK(rclc_timer_init_default(
 		&log_timer,
@@ -499,7 +528,7 @@ void MicroRosController::microrosTask(void *pvParameters)
 	init_msgs_params();
 	init_msgs_logger();
 
-	RCCHECK(rclc_executor_init(&executor, &support.context, 6, &allocator)); // create executor
+	RCCHECK(rclc_executor_init(&executor, &support.context, 6, &allocator));
 	RCCHECK(rclc_executor_add_subscription(&executor, &cmd_vel_subscriber, &cmd_vel_msg, &cmd_vel_callback, ON_NEW_DATA));
 	RCCHECK(rclc_executor_add_subscription(&executor, &params_subscriber, &params_msg, &params_callback, ON_NEW_DATA));
 	RCCHECK(rclc_executor_add_timer(&executor, &odom_timer));
@@ -517,7 +546,7 @@ void MicroRosController::microrosTask(void *pvParameters)
 	motorA.setPIDConfig(20.0, 0.0, 0.0);
 	motorB.setPIDConfig(20.0, 0.0, 0.0);
 
-	Wire.begin(22, 23); // 22 - SDA, 23 - SCL
+	Wire.begin(22, 23);
 	if (imu.begin() != INV_SUCCESS)
 	{
 		Serial.println("Unable to communicate with MPU-9250");

@@ -17,7 +17,6 @@ MotorController::MotorController(L298N &motorDriver, volatile long &encoder_valu
 	measuredRPM = 0;
 	pidPWM = 0;
 	encPrev = 0;
-	setPointHasChanged = false;
 	tickSampleTimePrev = 0;
 	motorReversed = false;
 
@@ -27,30 +26,26 @@ MotorController::MotorController(L298N &motorDriver, volatile long &encoder_valu
 	pwm = 0;
 }
 
-void MotorController::update()
+void MotorController::update(float dt, float correction)
 {
-	unsigned long tickTime = micros();
-	unsigned long tickTimeDelta = tickTime - tickSampleTimePrev;
-	tickSampleTimePrev = tickTime;
-
-	// if ((tickTimeDelta < pidUpdatePeriodUs) && !setPointHasChanged)
+	// if ((dt < pidUpdatePeriodUs))
 	// 	return;
 
 	long int encNow = getEncoderValue();
 	long int encDelta = encNow - encPrev;
 	encPrev = encNow;
 
-	measuredRPM = ((float)encDelta) / ((float)tickTimeDelta) * ticksPerMicroSecToRPM;
+	measuredRPM = ((float)encDelta) / ((float)dt) * ticksPerMicroSecToRPM;
 
-	setPointHasChanged = false;
-
+	targetRPM += correction;
+	pidController.setpoint(targetRPM );
 	pidPWM = pidController.compute(measuredRPM);
 
 	setPWM(pidPWM);
 
 	char str[128];
-	sprintf(str, "C: %f, %f, %f", measuredRPM, targetRPM, pidPWM);
-	MicroROSLogger::log(str, "update()", "motor_controller.cpp", LogLevel::INFO, false);
+	sprintf(str, "C: %.2f, %.2f, %.2f, %.2f", measuredRPM, targetRPM, pidPWM, correction);
+	MicroROSLogger::log(str, "update()", "motor_controller.cpp", LogLevel::INFO, true);
 }
 
 void MotorController::setPWM(float value)
@@ -168,7 +163,6 @@ bool MotorController::setTargetRPM(float rpm)
 
 	if(abs(rpm) <= maxRPM) {
 		targetRPM = rpm;
-		setPointHasChanged = true;
 		pidController.setpoint(targetRPM);
 		
 		return true;

@@ -12,13 +12,26 @@
 
 #define MAX_RPM 300
 
+class SpeedMatchingController {
+	public:
+		SpeedMatchingController(float kp) : kp_(kp) {}
+
+		float compute(float leftSpeed, float rightSpeed) {
+			float speedError = leftSpeed - rightSpeed;
+			return kp_ * speedError;
+		}
+
+	private:
+		float kp_;
+};
+
 class MotorController
 {
 public:
 	MotorController(L298N& motorDriver, volatile long& encoder_value, float PPR);
 
 	bool setTargetRPM(float rpm);
-	void update();
+	void update(float dt, float correction);
 	float getShaftAngle();
 	void reverseMotor(bool reversed);
 	void setMaxRPM(float rpm);
@@ -64,7 +77,6 @@ private:
 
 	unsigned int pidUpdatePeriodUs;
 	long int encPrev;
-	bool setPointHasChanged;
 	bool motorReversed;
 	unsigned long tickSampleTimePrev;
 };
