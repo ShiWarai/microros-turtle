@@ -1,9 +1,9 @@
 #pragma once
 
-// Based on https://github.com/kaiaai/firmware/blob/iron/libraries/MotorController
+#define PID_OPTIMIZED_I
 
 #include <Arduino.h>
-#include <PIDController.h>
+#include <GyverPID.h>
 #include <L298NX2.h>
 
 #include "encoder.hpp"
@@ -16,9 +16,15 @@ class SpeedMatchingController {
 	public:
 		SpeedMatchingController(float kp) : kp_(kp) {}
 
-		float compute(float leftSpeed, float rightSpeed) {
-			float speedError = leftSpeed - rightSpeed;
-			return kp_ * speedError;
+		float compute(float leftSpeed, float rightSpeed, float leftTargetSpeed, float rightTargetSpeed) {
+			float koef;
+
+			if(rightTargetSpeed == 0)
+				koef = (leftTargetSpeed == 0) ? 0 : INFINITY;
+			else
+				koef = leftTargetSpeed / rightTargetSpeed;
+
+			return kp_ * (leftSpeed - rightSpeed * koef);
 		}
 
 	private:
@@ -31,7 +37,7 @@ public:
 	MotorController(L298N& motorDriver, volatile long& encoder_value, float PPR);
 
 	bool setTargetRPM(float rpm);
-	void update(float dt, float correction);
+	void update(int64_t dt, float correction = 0);
 	float getShaftAngle();
 	void reverseMotor(bool reversed);
 	void setMaxRPM(float rpm);
@@ -42,6 +48,7 @@ public:
 	void setPIDKd(float kd);
 	void setPIDPeriod(float period);
 	void setPIDOnError(bool on_error);
+	void setPWM(float value);
 	float getCurrentPWM();
 	float getCurrentRPM();
 	float getTargetRPM();
@@ -58,25 +65,25 @@ private:
 
 	volatile long &encoder;
 
-	PIDController pidController;
-	double Kp;
-	double Ki;
-	double Kd;
+	GyverPID pidController;
+	double Kp = 0;
+	double Ki = 0;
+	double Kd = 0;
+	float straight_Kp = 0;
 
-	void setPWM(float value);
-	float pidPWM;
-	float targetRPM;
-	float measuredRPM;
-	float pwm;
-	float maxRPM;
+	float pidPWM = 0;
+	float targetRPM = 0;
+	float measuredRPM = 0;
+	float pwm = 0;
+	float maxRPM = 0;
+	bool targetIsChanged = false;
 
 	float encoderPPR;
 	float encoderTPR;
 	float encoderTPR_reciprocal;
 	float ticksPerMicroSecToRPM;
 
-	unsigned int pidUpdatePeriodUs;
-	long int encPrev;
-	bool motorReversed;
-	unsigned long tickSampleTimePrev;
+	long int encPrev = 0;
+	bool motorReversed = false;
+	unsigned long tickSampleTimePrev = 0;
 };

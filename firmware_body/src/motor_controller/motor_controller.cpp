@@ -3,33 +3,23 @@
 MotorController::MotorController(L298N &motorDriver, volatile long &encoder_value, float PPR)
 	: encoder(encoder_value), motorDriver(motorDriver)
 {
-	// Kp = 20;
-	// Ki = 0.1;
-	// Kd = 200;
-
-	pidController.begin();
-	pidController.limit(-255, 255);
+	pidController = GyverPID(0.0, 0.0, 0.0);
+	pidController.setLimits(-255, 255);
 	setEncoderPPR(PPR);
 	
 	setMaxRPM(MAX_RPM);
-
-	targetRPM = 0;
-	measuredRPM = 0;
-	pidPWM = 0;
-	encPrev = 0;
-	tickSampleTimePrev = 0;
-	motorReversed = false;
-
-	float pidPeriod = 1.0;
-	pidUpdatePeriodUs = (unsigned int)round(pidPeriod * 1e6);
-
-	pwm = 0;
 }
 
-void MotorController::update(float dt, float correction)
+void MotorController::update(int64_t dt, float correction)
 {
-	// if ((dt < pidUpdatePeriodUs))
-	// 	return;
+	if (targetIsChanged) {
+		straight_Kp = 0;
+		correction = 0;
+
+		targetIsChanged = false;
+	} else {
+		straight_Kp = max(-10.0f, min(straight_Kp, 10.0f));
+	}
 
 	long int encNow = getEncoderValue();
 	long int encDelta = encNow - encPrev;
@@ -37,15 +27,20 @@ void MotorController::update(float dt, float correction)
 
 	measuredRPM = ((float)encDelta) / ((float)dt) * ticksPerMicroSecToRPM;
 
-	targetRPM += correction;
-	pidController.setpoint(targetRPM );
-	pidPWM = pidController.compute(measuredRPM);
+	straight_Kp += correction;
+
+	pidController.setpoint = targetRPM + straight_Kp;
+	pidController.input = measuredRPM;
+	pidController.setDirection(0);
+	pidController.setDt(dt);
+
+	pidPWM = pidController.getResult();
 
 	setPWM(pidPWM);
 
-	char str[128];
-	sprintf(str, "C: %.2f, %.2f, %.2f, %.2f", measuredRPM, targetRPM, pidPWM, correction);
-	MicroROSLogger::log(str, "update()", "motor_controller.cpp", LogLevel::INFO, true);
+	// char str[128];
+	// sprintf(str, "C: %.2f, %.2f, %.2f, %.2f", measuredRPM, targetRPM, pidPWM, straight_Kp);
+	// MicroROSLogger::log(str, "update()", "motor_controller.cpp", LogLevel::INFO, true);
 }
 
 void MotorController::setPWM(float value)
@@ -60,10 +55,14 @@ void MotorController::setPWM(float value)
 
 	motorDriver.setSpeed(abs(value));
 
-	if ((value > 0 && !motorReversed) || (value < 0 && motorReversed))
-		motorDriver.forward();
-	else
-		motorDriver.backward();
+	if(fabs(value) >= 50.0) {
+		if ((value > 0 && !motorReversed) || (value < 0 && motorReversed))
+			motorDriver.forward();
+		else
+			motorDriver.backward();
+	} else {
+		motorDriver.stop();
+	}
 
 	pwm = value;
 }
@@ -123,7 +122,9 @@ void MotorController::setPIDConfig(float kp, float ki, float kd)
 	Ki = ki;
 	Kd = kd;
 	
-	pidController.tune(Kp, Ki, Kd); // настраиваем PID аргументы kP, kI, kD
+	pidController.Kp = kp;
+	pidController.Ki = ki;
+	pidController.Kd = kd;
 }
 
 void MotorController::setPIDKp(float kp)
@@ -163,7 +164,7 @@ bool MotorController::setTargetRPM(float rpm)
 
 	if(abs(rpm) <= maxRPM) {
 		targetRPM = rpm;
-		pidController.setpoint(targetRPM);
+		targetIsChanged = true;
 		
 		return true;
 	}

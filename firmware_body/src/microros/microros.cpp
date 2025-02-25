@@ -1,4 +1,5 @@
 #include "microros/microros.hpp"
+#include <PIDtuner2.h>
 
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){ Serial.printf("Error: %d\r\n", temp_rc); error_loop(); }}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)) {}}
@@ -27,7 +28,7 @@ constexpr float RPM_TO_MPS = 2 * PI * WHEEL_RADIUS / 60.0f; // Констант�
 DECLARE_ENCODER_WITH_NAME(LEFT, ENCODER_M1_A, ENCODER_M1_B)
 DECLARE_ENCODER_WITH_NAME(RIGHT, ENCODER_M2_A, ENCODER_M2_B)
 
-SpeedMatchingController speedMatchingController(0.1f);
+SpeedMatchingController speedMatchingController(0.2f);
 
 // Инициализация microROS
 rcl_publisher_t publisher;
@@ -121,9 +122,8 @@ void cmd_vel_callback(const void *msgin)
     motorB.setTargetRPM(right_wheel_rpm);
 
 	char str[128];
-	//sprintf(str, "Linear: %.2f, angular: %.2f, left RPM: %.2f, right RPM: %.2f", linear_speed, angular_speed, left_wheel_rpm, right_wheel_rpm);
-	sprintf(str, "left RPM: %.2f, right RPM: %.2f", left_wheel_rpm, right_wheel_rpm);
-	MicroROSLogger::log(str, "cmd_vel_callback()", "microros.cpp", LogLevel::INFO, true);
+	// sprintf(str, "Linear: %.2f, angular: %.2f, left RPM: %.2f, right RPM: %.2f", linear_speed, angular_speed, left_wheel_rpm, right_wheel_rpm);
+	// MicroROSLogger::log(str, "cmd_vel_callback()", "microros.cpp", LogLevel::INFO, false);
 }
 
 void params_callback(const void *msgin)
@@ -160,7 +160,7 @@ volatile int64_t last_time = 0;
 void odometry_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
 	int64_t current_time = esp_timer_get_time();
-	float dt = (current_time - last_time); // В секундах
+	int64_t dt = (current_time - last_time); // В секундах
 	last_time = current_time;
 	
 	// Получение данных с моторов
@@ -168,8 +168,9 @@ void odometry_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 	float right_rpm = motorB.getCurrentRPM();
 
     // Корректировка скоростей при движении по прямой
-    float correction = speedMatchingController.compute(left_rpm, right_rpm);
+    float correction = speedMatchingController.compute(left_rpm, right_rpm, motorA.getTargetRPM(), motorB.getTargetRPM());
 
+	// Передача корректировки и шага для обновления регулятора
 	motorA.update(dt, -correction);
 	motorB.update(dt, correction);
 
@@ -184,7 +185,7 @@ void odometry_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 		float angular_velocity = (right_velocity - left_velocity) / WHEEL_BASE;
 
 		// Интегрируем для вычисления новой позиции
-		float delta_theta = angular_velocity * dt;
+		float delta_theta = angular_velocity * dt  / 1e6f;
 		theta += delta_theta;
 		theta = fmod(theta + 2 * PI, 2 * PI); // Нормализация угла
 
@@ -195,7 +196,7 @@ void odometry_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 		y += delta_y;
 
 		// Обновление одометрического сообщения
-		odom_msg.header.stamp.nanosec = esp_timer_get_time() * 1000;
+		odom_msg.header.stamp.nanosec = current_time * 1000;
 
 		// Позиция
 		odom_msg.pose.pose.position.x = x;
@@ -210,12 +211,12 @@ void odometry_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 		odom_msg.twist.twist.linear.y = 0.0f; // В нашем случае скорости в Y нет
 		odom_msg.twist.twist.angular.z = angular_velocity;
 
-		char str[128];
-		sprintf(str, "Left RPM: %.2f, right RPM: %.2f, position (x: %.2f, y: %.2f, theta: %.2f), Linear Velocity: %.2f, Angular Velocity: %.2f",
-					left_rpm, right_rpm, x, y, theta, linear_velocity, angular_velocity);
-		MicroROSLogger::log(str, "odometry_timer_callback()", "microros.cpp", LogLevel::INFO, true);
-
 		odom_msg.header.stamp.nanosec = esp_timer_get_time() * 1000;
+
+		// char str[256];
+		// sprintf(str, "Left RPM: %.2f, right RPM: %.2f, position (x: %.2f, y: %.2f, theta: %.2f), Linear Velocity: %.2f, Angular Velocity: %.2f",
+		// 			left_rpm, right_rpm, x, y, theta, linear_velocity, angular_velocity);
+		// MicroROSLogger::log(str, "odometry_timer_callback()", "microros.cpp", LogLevel::INFO, false);
 
 		RCSOFTCHECK(rcl_publish(&odom_publisher, &odom_msg, NULL));
 	}
@@ -543,8 +544,8 @@ void MicroRosController::microrosTask(void *pvParameters)
 	INIT_ENCODER_WITH_NAME(LEFT, ENCODER_M1_A, ENCODER_M1_B)
 	INIT_ENCODER_WITH_NAME(RIGHT, ENCODER_M2_A, ENCODER_M2_B)
 
-	motorA.setPIDConfig(20.0, 0.0, 0.0);
-	motorB.setPIDConfig(20.0, 0.0, 0.0);
+	motorA.setPIDConfig(3.0, 0.0, 0.0);
+	motorB.setPIDConfig(3.0, 0.0, 0.0);
 
 	Wire.begin(22, 23);
 	if (imu.begin() != INV_SUCCESS)
