@@ -1,1 +1,4 @@
-# hack-rosneft
+# Робот-черепаха
+Максимально дешёвая робот-черепаха для программирования на microROS. В папке model - чертежи и инструкция по сборке, в папках firmware_* - исходные коды прошивок для двух микроконтроллеров.
+
+![image](https://github.com/user-attachments/assets/1b902d44-8ded-4fbf-a194-8cbae08abcfe)
