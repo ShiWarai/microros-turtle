@@ -334,11 +334,6 @@ void init_msgs_odometry()
 	odom_msg.header.frame_id.data = new char[odom_msg.header.frame_id.capacity];
 	odom_msg.header.frame_id = micro_ros_string_utilities_init("odom_frame");
 
-	// odom_msg.child_frame_id.capacity = 8;
-	// odom_msg.child_frame_id.size = 7;
-	// odom_msg.child_frame_id.data = new char[odom_msg.child_frame_id.capacity];
-	// odom_msg.child_frame_id = micro_ros_string_utilities_init("base_link");
-
 	odom_msg.pose.covariance[0] = 0.1; // Примерные значения ковариации
 	odom_msg.pose.covariance[7] = 0.1;
 	odom_msg.pose.covariance[14] = 1e-3;
@@ -388,10 +383,6 @@ void init_msgs_laserscan()
 }
 
 void init_msgs_logger() {
-	// log_msg.name.capacity = 32;
-	// log_msg.name.size = 0;
-	// log_msg.name.data = (char *)malloc(log_msg.name.capacity * sizeof(char));
-
 	log_msg.msg.capacity = MESSAGE_LENGTH;
 	log_msg.msg.size = 0;
 	log_msg.msg.data = (char *)malloc(log_msg.msg.capacity * sizeof(char));
