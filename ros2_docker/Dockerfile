@@ -14,7 +14,10 @@ WORKDIR /uros2_ws
 # Клонируйте micro-ROS в src
 RUN git clone -b humble https://github.com/micro-ROS/micro_ros_setup.git src/micro_ros_setup
 
-# Обновите зависимости и соберите micro-ROS
+# Копируйте дополнительные пакеты с хоста в /uros2_ws/src
+COPY extra_packages/ src/
+
+# Обновите зависимости и соберите micro-ROS вместе с дополнительными пакетами
 RUN /bin/bash -c "source /opt/ros/humble/setup.bash && \
     apt-get update && rosdep update && \
     rosdep install --from-paths src --ignore-src -y && \

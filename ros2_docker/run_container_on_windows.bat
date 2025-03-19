@@ -1,6 +1,9 @@
 @echo off
 setlocal EnableDelayedExpansion
 
+:: Задаем имя образа по умолчанию
+set "IMAGE_NAME=%~1"
+
 :: Определяем IPv4-адрес хоста
 for /f "tokens=2 delims=:" %%i in ('ipconfig ^| findstr /i "IPv4"') do (
     set "IP=%%i"
@@ -25,7 +28,8 @@ if not exist "%LOCAL_PATH%" (
     echo Папка создана.
 )
 
-:: Запускаем контейнер с micro-ROS в /uros2_ws, монтированием /ros2_ws и прокидыванием порта 8888
-docker run -it --rm -e DISPLAY=host.docker.internal:0 -v "%LOCAL_PATH%:/ros2_ws" -p 8888:8888 ros2-humble-custom
+:: Запускаем контейнер с указанным именем образа
+echo Starting Docker container with image: %IMAGE_NAME%
+docker run -it --rm -e DISPLAY=host.docker.internal:0 -v "%LOCAL_PATH%:/ros2_ws" -p 8888:8888/udp %IMAGE_NAME%
 
 pause
