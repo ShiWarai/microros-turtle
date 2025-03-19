@@ -103,7 +103,7 @@ void error_loop()
 	while (1)
 	{
 		Serial.println("Error!");
-		vTaskDelay(100);
+		vTaskDelay(5000);
 	}
 }
 
@@ -410,8 +410,8 @@ void MicroRosController::microrosTask(void *pvParameters)
 	IPAddress agent_ip_address = IPAddress();
 	agent_ip_address.fromString(settings.agent_ip);
 
-	#ifdef AGENT_IP
 	static struct micro_ros_agent_locator locator;
+	#ifdef AGENT_IP
 	locator.address = agent_ip_address;
 	locator.port = settings.agent_port;
 
@@ -423,8 +423,19 @@ void MicroRosController::microrosTask(void *pvParameters)
 		platformio_transport_write,
 		platformio_transport_read);
 	#else
-		#error "NEED FIX THIS BLOCK"
-		set_microros_wifi_transports(WIFI_SSID, WIFI_PASSWORD, getIPAddressByHostname(AGENT_HOSTNAME), AGENT_PORT);
+	locator.address = getIPAddressByHostname(settings.agent_ip.c_str());
+	locator.port = settings.agent_port;
+	
+	Serial.println(locator.address);
+	Serial.println(locator.port);
+
+	rmw_uros_set_custom_transport(
+		false,
+		(void *)&locator,
+		platformio_transport_open,
+		platformio_transport_close,
+		platformio_transport_write,
+		platformio_transport_read);
 	#endif
 
 	allocator = rcl_get_default_allocator();
