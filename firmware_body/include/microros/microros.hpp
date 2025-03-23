@@ -18,7 +18,7 @@
 #include <rcl_interfaces/msg/log.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
-#include <SparkFunMPU9250-DMP.h>
+#include <MPU9250-DMP.h>
 
 #include "motor_controller/motor_controller.hpp"
 #include "settings/settings.hpp"
