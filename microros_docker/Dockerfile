@@ -35,5 +35,12 @@ RUN /bin/bash -c "source /opt/ros/humble/setup.bash && \
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 RUN echo "source /uros2_ws/install/setup.bash" >> /root/.bashrc
 
+# Создание папки для работы с прошивкой
+WORKDIR /root/firmwares
+RUN git clone https://github.com/ShiWarai/microros-turtle.git /tmp/microros-turtle && \
+    mv /tmp/microros-turtle/firmware_body . && \
+    mv /tmp/microros-turtle/firmware_camera . && \
+    rm -rf /tmp/microros-turtle
+
 # Переключите рабочую директорию на /ros2_ws
 WORKDIR /ros2_ws
