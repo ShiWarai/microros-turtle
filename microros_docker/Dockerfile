@@ -3,6 +3,7 @@ FROM osrf/ros:humble-desktop-full
 # Установите зависимости для micro-ROS
 RUN apt-get update && apt-get install -y \
     python3-pip \
+    python3-venv \
     python3-rosdep \
     python3-colcon-common-extensions \
     git \
