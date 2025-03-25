@@ -37,7 +37,7 @@
 
 1. Склонируйте репозиторий проекта:  
    ```sh
-   git clone https://github.com/yourusername/microros-cam.git
+   git clone https://github.com/ShiWarai/microros-turtle
    ```
 2. Откройте проект в Visual Studio Code.  
 3. Убедитесь, что файл `platformio.ini` настроен правильно. См. пример в репозитории.  
