@@ -11,19 +11,22 @@ void MicroROSLogger::init() {
 
 // Добавление сообщения в очередь
 void MicroROSLogger::log(String message, String func, String file, LogLevel level, bool to_serial_too) {
-    LogMessage logMessage;
+    if(settings.logs_enabled)
+    {
+        LogMessage logMessage;
 
-    logMessage.level = level;
-    strcpy(logMessage.message, message.c_str());
-    strcpy(logMessage.func, func.c_str());
-    strcpy(logMessage.file, file.c_str());
+        logMessage.level = level;
+        strcpy(logMessage.message, message.c_str());
+        strcpy(logMessage.func, func.c_str());
+        strcpy(logMessage.file, file.c_str());
 
-    if(to_serial_too)
-        Serial.printf("[%s] from %s: %s\r\n", logMessage.file, logMessage.func, logMessage.message);
+        if(to_serial_too)
+            Serial.printf("[%s] from %s: %s\r\n", logMessage.file, logMessage.func, logMessage.message);
 
-    if (logMutex != nullptr && xSemaphoreTake(logMutex, portMAX_DELAY)) {
-        xQueueSend(logQueue, &logMessage, 0);
-        xSemaphoreGive(logMutex);
+        if (logMutex != nullptr && xSemaphoreTake(logMutex, portMAX_DELAY)) {
+            xQueueSend(logQueue, &logMessage, 0);
+            xSemaphoreGive(logMutex);
+        }
     }
 }
 

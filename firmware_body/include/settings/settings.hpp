@@ -105,6 +105,7 @@ SETTING_INFO {#NAME, #TYPE, REBOOT_IS_REQUIRED, INPUT_VALIDATOR},
     TYPE_AND_NAME(String, wifi_ssid, true, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(String, wifi_password, true, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(uint32_t, ros_enabled, false, NULL, __VA_ARGS__) \
+    TYPE_AND_NAME(uint32_t, logs_enabled, false, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(String, agent_ip, true, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(uint32_t, agent_port, true, NULL, __VA_ARGS__) \
     TYPE_AND_NAME(uint32_t, odom_delay, true, NULL, __VA_ARGS__) \

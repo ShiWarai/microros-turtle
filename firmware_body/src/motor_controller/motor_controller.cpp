@@ -34,13 +34,13 @@ void MotorController::update(int64_t dt, float correction)
 	pidController.setDirection(0);
 	pidController.setDt(dt);
 
-	pidPWM = pidController.getResult();
+	pidPWM = pidController.getResult() + KFF * targetRPM;
 
 	setPWM(pidPWM);
 
 	// char str[128];
 	// sprintf(str, "C: %.2f, %.2f, %.2f, %.2f", measuredRPM, targetRPM, pidPWM, straight_Kp);
-	// MicroROSLogger::log(str, "update()", "motor_controller.cpp", LogLevel::INFO, true);
+	// MicroROSLogger::log(str, "update()", "motor_controller.cpp", LogLevel::INFO, false);
 }
 
 void MotorController::setPWM(float value)

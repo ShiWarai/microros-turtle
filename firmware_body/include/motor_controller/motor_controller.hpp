@@ -7,10 +7,10 @@
 #include <L298NX2.h>
 
 #include "encoder.hpp"
-
 #include "microros/microros_logger.hpp"
 
 #define MAX_RPM 300
+#define KFF 2.2
 
 class SpeedMatchingController {
 	public:
