@@ -27,7 +27,7 @@ constexpr float RPM_TO_MPS = 2 * PI * WHEEL_RADIUS / 60.0f; // Констант�
 DECLARE_ENCODER_WITH_NAME(LEFT, ENCODER_M1_A, ENCODER_M1_B)
 DECLARE_ENCODER_WITH_NAME(RIGHT, ENCODER_M2_A, ENCODER_M2_B)
 
-SpeedMatchingRegulator speedMatchingController(0.2f);
+SpeedMatchingRegulator speedMatchingController(0.4f);
 
 // Инициализация microROS
 rcl_publisher_t publisher;
@@ -270,8 +270,10 @@ void imu_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 			imu_msg.linear_acceleration.y = imu.calcAccel(imu.ay) * 10;
 			imu_msg.linear_acceleration.z = imu.calcAccel(imu.az) * 10;
 
-			//imu.computeEulerAngles();
-			// Serial.printf("%f, %f, %f\r\n", imu.roll * 180 / PI, imu.pitch * 180 / PI, imu.yaw * 180 / PI);
+			char str[128];
+			imu.computeEulerAngles();
+			sprintf(str, "roll: %.2f, pitch: %.2f, yaw: %.2f", imu.roll * 180 / PI, imu.pitch * 180 / PI, imu.yaw * 180 / PI);
+			MicroROSLogger::log(str, "odometry_timer_callback()", "microros.cpp", LogLevel::INFO, false);
 
 			imu_msg.orientation.w = q0;
 			imu_msg.orientation.x = q1;
@@ -297,8 +299,8 @@ void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 
 			for (int i = 0; i < lidar->dataSize; i++)
 			{
-				if(lidar->intensity[i] <= 3)
-					continue;
+				// if(lidar->intensity[i] <= 3)
+				// 	continue;
 					
 				uint16_t j = round(normalize_angle(lidar->theta[i]) * RAD_TO_ITER);
 				
@@ -378,7 +380,7 @@ void init_msgs_imu()
 	imu_msg.header.frame_id = micro_ros_string_utilities_init("imu_frame");
 }
 
-void init_msgs_laserscan()
+void init_msgs_lidar()
 {
 	lidar_msg.header.frame_id.capacity = 12;
 	lidar_msg.header.frame_id.size = 11;
@@ -550,7 +552,7 @@ void MicroRosController::microrosTask(void *pvParameters)
 		RCL_MS_TO_NS(settings.logger_delay),
 		logger_timer_callback));
 
-	init_msgs_laserscan();
+	init_msgs_lidar();
 	init_msgs_imu();
 	init_msgs_odometry();
 	init_msgs_pid_params();
@@ -571,8 +573,8 @@ void MicroRosController::microrosTask(void *pvParameters)
 	INIT_ENCODER_WITH_NAME(LEFT, ENCODER_M1_A, ENCODER_M1_B)
 	INIT_ENCODER_WITH_NAME(RIGHT, ENCODER_M2_A, ENCODER_M2_B)
 
-	motorA.setPIDConfig(3.0, 0.0, 0.0, 0.3);
-	motorB.setPIDConfig(3.0, 0.0, 0.0, 0.3);
+	motorA.setPIDConfig(2.0, 0.0, 0.06, 2.25);
+	motorB.setPIDConfig(2.0, 0.0, 0.06, 2.25);
 
 	Wire.begin(22, 23);
 	if (imu.begin() != INV_SUCCESS)

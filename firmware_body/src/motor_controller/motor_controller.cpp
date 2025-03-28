@@ -21,8 +21,7 @@ void MotorController::update(float dt, float correction)
 
 		targetIsChanged = false;
 	} else {
-		straight_Kp = max(-10.0f, min(straight_Kp, 10.0f));
-		correction = max(-5.0f, min(correction, 5.0f));
+		straight_Kp = max(-20.0f, min(straight_Kp, 20.0f));
 	}
 
 	straight_Kp += correction;
@@ -37,14 +36,14 @@ void MotorController::update(float dt, float correction)
 	pidController.input = measuredRPM;
 	pidController.setDt(dt);
 
-	pidtype pid = pidController.getResult();
-	pidPWM = pid + Kff * targetRPM + straight_Kp;
+	pidtype pid = pidController.getResult() + straight_Kp;
+	pidPWM = pid + Kff * targetRPM;
 
 	setPWM(pidPWM);
 
-	// char str[128];
-	// sprintf(str, "C: %.2f, T: %.2f, PID: %.2f, pidPWM: %.2f, K_p: %.2f, Kff: %.2f", measuredRPM, targetRPM, pid, pidPWM, straight_Kp, Kff);
-	// MicroROSLogger::log(str, "update()", "motor_controller.cpp", LogLevel::INFO, false);
+	char str[128];
+	sprintf(str, "C: %.2f, T: %.2f, PID: %.2f, pidPWM: %.2f, K_p: %.2f, Kff: %.2f", measuredRPM, targetRPM, pid, pidPWM, straight_Kp, Kff);
+	MicroROSLogger::log(str, "update()", "motor_controller.cpp", LogLevel::INFO, false);
 }
 
 void MotorController::setPWM(float value)
