@@ -13,6 +13,7 @@ void PreferencesController::preferencesTask(void *pvParameters) {
 	settings.usb_delay = 1000 / portTICK_PERIOD_MS;
 	settings.access_key = ACCESS_KEY;
 	settings.ros_enabled = 1;
+	settings.logs_enabled = 1;
 	#ifdef AGENT_IP
 	settings.agent_ip = AGENT_IP;
 	#else

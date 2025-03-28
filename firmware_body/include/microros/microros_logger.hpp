@@ -5,17 +5,20 @@
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
 
+#include "settings/settings.hpp"
+
 #define QUEUE_LENGTH 10
 #define MESSAGE_LENGTH 256
 #define FUNC_LENGTH 32
 #define FILE_LENGTH 32
 
 enum class LogLevel {
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR,
-    FATAL
+    UNSET = 0,
+    DEBUG = 10,
+    ERROR = 40,
+    FATAL = 50,
+    INFO = 20,
+    WARN = 30
 };
 
 struct LogMessage {
