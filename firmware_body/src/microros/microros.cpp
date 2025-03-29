@@ -299,8 +299,10 @@ void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 
 			for (int i = 0; i < lidar->dataSize; i++)
 			{
-				// if(lidar->intensity[i] <= 3)
-				// 	continue;
+				#ifndef LIDAR_INTENSITY
+				if(lidar->intensity[i] <= 3)
+					continue;
+				#endif
 					
 				uint16_t j = round(normalize_angle(lidar->theta[i]) * RAD_TO_ITER);
 				
