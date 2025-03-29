@@ -41,9 +41,9 @@ void MotorController::update(float dt, float correction)
 
 	setPWM(pidPWM);
 
-	char str[128];
-	sprintf(str, "C: %.2f, T: %.2f, PID: %.2f, pidPWM: %.2f, K_p: %.2f, Kff: %.2f", measuredRPM, targetRPM, pid, pidPWM, straight_Kp, Kff);
-	MicroROSLogger::log(str, "update()", "motor_controller.cpp", LogLevel::INFO, false);
+	// char str[128];
+	// sprintf(str, "C: %.2f, T: %.2f, PID: %.2f, pidPWM: %.2f, K_p: %.2f, Kff: %.2f", measuredRPM, targetRPM, pid, pidPWM, straight_Kp, Kff);
+	// MicroROSLogger::log(str, "update()", "motor_controller.cpp", LogLevel::INFO, false);
 }
 
 void MotorController::setPWM(float value)

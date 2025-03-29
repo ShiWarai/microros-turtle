@@ -300,10 +300,10 @@ void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 			for (int i = 0; i < lidar->dataSize; i++)
 			{
 				#ifndef LIDAR_INTENSITY
-				if(lidar->intensity[i] <= 3)
+				if(lidar->intensity[i] <= LIDAR_MAX_INTENSITY)
 					continue;
 				#endif
-					
+
 				uint16_t j = round(normalize_angle(lidar->theta[i]) * RAD_TO_ITER);
 				
 				if(j < lidar_msg.ranges.capacity) {
@@ -357,7 +357,7 @@ void init_msgs_odometry()
 	odom_msg.header.frame_id.capacity = 12;
 	odom_msg.header.frame_id.size = 11;
 	odom_msg.header.frame_id.data = new char[odom_msg.header.frame_id.capacity];
-	odom_msg.header.frame_id = micro_ros_string_utilities_init("odom_frame");
+	odom_msg.header.frame_id = micro_ros_string_utilities_init("odom");
 
 	odom_msg.pose.covariance[0] = 0.1; // Примерные значения ковариации
 	odom_msg.pose.covariance[7] = 0.1;
@@ -379,7 +379,7 @@ void init_msgs_imu()
 	imu_msg.header.frame_id.capacity = 12;
 	imu_msg.header.frame_id.size = 11;
 	imu_msg.header.frame_id.data = new char[imu_msg.header.frame_id.capacity];
-	imu_msg.header.frame_id = micro_ros_string_utilities_init("imu_frame");
+	imu_msg.header.frame_id = micro_ros_string_utilities_init("imu");
 }
 
 void init_msgs_lidar()
@@ -388,7 +388,7 @@ void init_msgs_lidar()
 	lidar_msg.header.frame_id.size = 11;
 	lidar_msg.header.frame_id.data = new char[lidar_msg.header.frame_id.capacity];
 
-	lidar_msg.header.frame_id = micro_ros_string_utilities_init("lidar_frame");
+	lidar_msg.header.frame_id = micro_ros_string_utilities_init("lidar");
 
 	lidar_msg.ranges.capacity = RANGES_SIZE;
 	lidar_msg.ranges.size = lidar_msg.ranges.capacity;
@@ -496,7 +496,7 @@ void MicroRosController::microrosTask(void *pvParameters)
 		&odom_publisher,
 		&node,
 		ROSIDL_GET_MSG_TYPE_SUPPORT(nav_msgs, msg, Odometry),
-		"/odometry",
+		"/odom",
 		&odometry_qos
 	));
 
