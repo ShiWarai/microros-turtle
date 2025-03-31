@@ -19,7 +19,7 @@ constexpr uint8_t IN1_M2 = 21;
 constexpr uint8_t IN2_M2 = 19;
 
 // Физические параметры робота
-constexpr float WHEEL_BASE = 0.16f;	  // Расстояние между колесами (метры)
+constexpr float WHEEL_BASE = 0.165f;	  // Расстояние между колесами (метры)
 constexpr float WHEEL_RADIUS = 0.034f; // Радиус колес (метры)
 constexpr uint16_t FULL_ROTATE = 374;
 constexpr float RPM_TO_MPS = 2 * PI * WHEEL_RADIUS / 60.0f; // Константы для пересчёта RPM в скорость
@@ -135,8 +135,8 @@ void cmd_vel_callback(const void *msgin)
     motorA.setTargetRPM(target_left_rpm);
     motorB.setTargetRPM(target_right_rpm);
 
-	char str[128];
-	sprintf(str, "linear: %.2f, angular: %.2f, target left RPM: %.2f, target right RPM: %.2f", target_linear_speed, target_angular_speed, target_left_rpm, target_right_rpm);
+	char str[256];
+	sprintf(str, "target linear: %.2f, target angular: %.2f, target left RPM: %.2f, target right RPM: %.2f", target_linear_speed, target_angular_speed, target_left_rpm, target_right_rpm);
 	MicroROSLogger::log(str, "cmd_vel_callback()", "microros.cpp", LogLevel::INFO, false);
 }
 
@@ -144,7 +144,7 @@ void pid_params_callback(const void *msgin)
 {
     const std_msgs__msg__Float32MultiArray *msg = (const std_msgs__msg__Float32MultiArray *)msgin;
 
-	char str[128]; // Увеличиваем размер буфера для подробного вывода
+	char str[128];
     if (msg->data.size == 9)
     {
         motorA.setPIDConfig(msg->data.data[0], msg->data.data[1], msg->data.data[2], msg->data.data[3]);
@@ -270,10 +270,10 @@ void imu_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 			imu_msg.linear_acceleration.y = imu.calcAccel(imu.ay) * 10;
 			imu_msg.linear_acceleration.z = imu.calcAccel(imu.az) * 10;
 
-			char str[128];
-			imu.computeEulerAngles();
-			sprintf(str, "roll: %.2f, pitch: %.2f, yaw: %.2f", imu.roll * 180 / PI, imu.pitch * 180 / PI, imu.yaw * 180 / PI);
-			MicroROSLogger::log(str, "odometry_timer_callback()", "microros.cpp", LogLevel::INFO, false);
+			// char str[128];
+			// imu.computeEulerAngles();
+			// sprintf(str, "roll: %.2f, pitch: %.2f, yaw: %.2f", imu.roll * 180 / PI, imu.pitch * 180 / PI, imu.yaw * 180 / PI);
+			// MicroROSLogger::log(str, "odometry_timer_callback()", "microros.cpp", LogLevel::INFO, false);
 
 			imu_msg.orientation.w = q0;
 			imu_msg.orientation.x = q1;
@@ -295,14 +295,16 @@ void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 		if (xSemaphoreTake(lidar->dataLock, portMAX_DELAY) == pdTRUE)
 		{
 			for(size_t i = 0; i < lidar_msg.ranges.capacity; i++)
-				lidar_msg.ranges.data[i] = 0;
+				lidar_msg.ranges.data[i] = -1;
 
 			for (int i = 0; i < lidar->dataSize; i++)
 			{
 				#ifndef LIDAR_INTENSITY
-				if(lidar->intensity[i] <= LIDAR_MAX_INTENSITY)
+				if(lidar->intensity[i] < LIDAR_MIN_INTENSITY)
 					continue;
 				#endif
+				// if(lidar->distance[i] >= 32768)
+				// 	continue;
 
 				uint16_t j = round(normalize_angle(lidar->theta[i]) * RAD_TO_ITER);
 				
@@ -321,12 +323,20 @@ void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 			
 			RCSOFTCHECK(rcl_publish(&lidar_publisher, &lidar_msg, NULL));
 		}
+	} else {
+		LogMessage logMessage;
+		strcpy(logMessage.func, "lidar_timer_callback()");
+		strcpy(logMessage.file, "microros.cpp");
+		sprintf(logMessage.message, "Skip!");
+		logMessage.level = LogLevel::WARN;
+
+		MicroROSLogger::log(logMessage, false);
 	}
 }
 
 void logger_timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
-	while(MicroROSLogger::hasLogMessages()) {
-		LogMessage log = MicroROSLogger::getNextLogMessage();
+	while(MicroROSLogger::has_log_messages()) {
+		LogMessage log = MicroROSLogger::get_next_log_message();
 		
 		log_msg.msg.data = log.message;
 		log_msg.msg.size = strlen(log_msg.msg.data);

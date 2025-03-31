@@ -7,7 +7,7 @@
 
 #include "settings/settings.hpp"
 
-#define QUEUE_LENGTH 10
+#define QUEUE_LENGTH 120
 #define MESSAGE_LENGTH 256
 #define FUNC_LENGTH 32
 #define FILE_LENGTH 32
@@ -30,12 +30,13 @@ struct LogMessage {
 
 class MicroROSLogger {
 public:
-    static void init(); // Инициализация очереди и мьютекса
-    static void log(String message, String func = "", String file = "", LogLevel level = LogLevel::INFO, bool to_serial_too = true);
-    static LogMessage getNextLogMessage();
-    static bool hasLogMessages();
+    static void init();
+    static bool log(String message_text, String func = "", String file = "", LogLevel level = LogLevel::INFO, bool to_serial_too = true);
+    static bool log(LogMessage msg, bool to_serial_too = true);
+    static LogMessage get_next_log_message();
+    static bool has_log_messages();
 
 private:
-    static QueueHandle_t logQueue; // Очередь FreeRTOS
-    static SemaphoreHandle_t logMutex; // Мьютекс для синхронизации
+    static QueueHandle_t log_queue;
+    static SemaphoreHandle_t log_mutex;
 };

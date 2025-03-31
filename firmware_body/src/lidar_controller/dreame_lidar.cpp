@@ -49,6 +49,10 @@ void DreameLidar::getData() {
     this->serial->readBytes((uint8_t*)&crc, 2);
     float endAngle = (endAngleTmp - 0xA000) / 64.0;
 
+    // char str[128];
+    // sprintf(str, "start_angle: %.3f, end_angle: %.3f", startAngle, endAngle);
+    // MicroROSLogger::log(str, "getData()", "dreame_lidar.cpp", LogLevel::INFO, false);
+
     // Обновление данных
     if (xSemaphoreTake(dataLock, portMAX_DELAY) == pdTRUE) {
         if(endAngle < startAngle)
@@ -58,8 +62,8 @@ void DreameLidar::getData() {
             this->dataObtained = true;
         preStartAngle = startAngle;
 
-        float startAngleRad = startAngle * M_PI / 180 * (isInvert ? -1 : 1);
-        float endAngleRad = endAngle * M_PI / 180 * (isInvert ? -1 : 1);
+        float startAngleRad = (startAngle + angle_offset) * M_PI / 180 * (isInvert ? -1 : 1);
+        float endAngleRad = (endAngle + angle_offset) * M_PI / 180 * (isInvert ? -1 : 1);
         float angleIncrement = (endAngleRad - startAngleRad) / 8.0;
 
         for (int i = 0; i < 8; i++) {

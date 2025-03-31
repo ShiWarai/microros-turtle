@@ -1,54 +1,61 @@
 #include "microros/microros_logger.hpp"
 
-QueueHandle_t MicroROSLogger::logQueue = nullptr;
-SemaphoreHandle_t MicroROSLogger::logMutex = nullptr;
+QueueHandle_t MicroROSLogger::log_queue = nullptr;
+SemaphoreHandle_t MicroROSLogger::log_mutex = nullptr;
 
-// Инициализация очереди и мьютекса
 void MicroROSLogger::init() {
-    logQueue = xQueueCreate(QUEUE_LENGTH, sizeof(LogMessage));
-    logMutex = xSemaphoreCreateMutex();
+    log_queue = xQueueCreate(QUEUE_LENGTH, sizeof(LogMessage));
+    log_mutex = xSemaphoreCreateMutex();
 }
 
-// Добавление сообщения в очередь
-void MicroROSLogger::log(String message, String func, String file, LogLevel level, bool to_serial_too) {
-    if(settings.logs_enabled)
-    {
+bool MicroROSLogger::log(String message_text, String func, String file, LogLevel level, bool to_serial_too) {
+    if(settings.logs_enabled) {
         LogMessage logMessage;
 
         logMessage.level = level;
-        strcpy(logMessage.message, message.c_str());
+        strcpy(logMessage.message, message_text.c_str());
         strcpy(logMessage.func, func.c_str());
         strcpy(logMessage.file, file.c_str());
 
-        if(to_serial_too)
-            Serial.printf("[%s] from %s: %s\r\n", logMessage.file, logMessage.func, logMessage.message);
+        return MicroROSLogger::log(logMessage, to_serial_too);
+    } else {
+        return false;
+    }
+}
 
-        if (logMutex != nullptr && xSemaphoreTake(logMutex, portMAX_DELAY)) {
-            xQueueSend(logQueue, &logMessage, 0);
-            xSemaphoreGive(logMutex);
+bool MicroROSLogger::log(LogMessage msg, bool to_serial_too) {
+    if(settings.logs_enabled)
+    {
+        if(to_serial_too)
+            Serial.printf("[%s] from %s: %s\r\n", msg.file, msg.func, msg.message);
+
+        if (log_mutex != nullptr && xSemaphoreTake(log_mutex, portMAX_DELAY)) {
+            xQueueSend(log_queue, &msg, 0);
+            xSemaphoreGive(log_mutex);
+            return true;
         }
     }
+
+    return false;
 }
 
-// Получение следующего сообщения из очереди
-LogMessage MicroROSLogger::getNextLogMessage() {
-    LogMessage logMessage;
+LogMessage MicroROSLogger::get_next_log_message() {
+    LogMessage log_message;
 
-    if (logMutex != nullptr && xSemaphoreTake(logMutex, portMAX_DELAY)) {
-        xQueueReceive(logQueue, &logMessage, 0);
-        xSemaphoreGive(logMutex);
+    if (log_mutex != nullptr && xSemaphoreTake(log_mutex, portMAX_DELAY)) {
+        xQueueReceive(log_queue, &log_message, 0);
+        xSemaphoreGive(log_mutex);
     }
 
-    return logMessage;
+    return log_message;
 }
 
-// Проверка наличия сообщений в очереди
-bool MicroROSLogger::hasLogMessages() {
+bool MicroROSLogger::has_log_messages() {
     bool hasMessages = false;
 
-    if (logMutex != nullptr && xSemaphoreTake(logMutex, portMAX_DELAY)) {
-        hasMessages = (uxQueueMessagesWaiting(logQueue) > 0);
-        xSemaphoreGive(logMutex);
+    if (log_mutex != nullptr && xSemaphoreTake(log_mutex, portMAX_DELAY)) {
+        hasMessages = (uxQueueMessagesWaiting(log_queue) > 0);
+        xSemaphoreGive(log_mutex);
     }
 
     return hasMessages;

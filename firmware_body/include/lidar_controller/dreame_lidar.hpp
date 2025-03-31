@@ -5,6 +5,8 @@
 #include <freertos/task.h>
 #include <freertos/semphr.h>
 
+#include "microros/microros_logger.hpp"
+
 #define LIDAR_DATA_SIZE 720
 #define LIDAR_BAUDRATE 115200
 
@@ -28,4 +30,5 @@ private:
     int writePos;
     bool isInvert;
     float preStartAngle = 0;
+    float angle_offset = 16;
 };
