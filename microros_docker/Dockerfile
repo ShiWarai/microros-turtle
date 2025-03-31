@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y \
     python3-rosdep \
     python3-colcon-common-extensions \
     git \
+    ros-humble-navigation2 \
+    ros-humble-nav2-bringup \
+    ros-humble-imu-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # Создайте рабочее пространство для micro-ROS Agent в /uros2_ws
