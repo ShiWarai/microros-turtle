@@ -7,7 +7,7 @@
 
 #include "settings/settings.hpp"
 
-#define QUEUE_LENGTH 120
+#define QUEUE_LENGTH 20
 #define MESSAGE_LENGTH 256
 #define FUNC_LENGTH 32
 #define FILE_LENGTH 32

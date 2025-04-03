@@ -3,26 +3,9 @@
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){ Serial.printf("Error: %d\r\n", temp_rc); error_loop(); }}
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)) {}}
 
-// Распиновка
-constexpr uint8_t ENCODER_M1_A = 27;
-constexpr uint8_t ENCODER_M1_B = 26;
-
-constexpr uint8_t EN_M1 = 13;
-constexpr uint8_t IN1_M1 = 12;
-constexpr uint8_t IN2_M1 = 14;
-
-constexpr uint8_t ENCODER_M2_B = 25;
-constexpr uint8_t ENCODER_M2_A = 33;
-
-constexpr uint8_t EN_M2 = 18;
-constexpr uint8_t IN1_M2 = 21;
-constexpr uint8_t IN2_M2 = 19;
-
 // Физические параметры робота
-constexpr float WHEEL_BASE = 0.165f;	  // Расстояние между колесами (метры)
-constexpr float WHEEL_RADIUS = 0.034f; // Радиус колес (метры)
-constexpr uint16_t FULL_ROTATE = 374;
 constexpr float RPM_TO_MPS = 2 * PI * WHEEL_RADIUS / 60.0f; // Константы для пересчёта RPM в скорость
+constexpr float RAD_TO_ITER = RAD_TO_DEG * (RANGES_SIZE / 360.0); // Константа для лидара
 
 DECLARE_ENCODER_WITH_NAME(LEFT, ENCODER_M1_A, ENCODER_M1_B)
 DECLARE_ENCODER_WITH_NAME(RIGHT, ENCODER_M2_A, ENCODER_M2_B)
@@ -52,7 +35,13 @@ rcl_publisher_t lidar_publisher;
 rcl_timer_t lidar_timer;
 sensor_msgs__msg__LaserScan lidar_msg;
 
+#ifdef MPU_9250
 MPU9250_DMP imu;
+#endif
+#ifdef MPU_6050
+MPU6050 mpu;
+uint8_t fifoBuffer[45];         // буфер
+#endif
 rcl_publisher_t imu_publisher;
 rcl_timer_t imu_timer;
 sensor_msgs__msg__Imu imu_msg;
@@ -245,6 +234,7 @@ void odometry_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 
 void imu_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
+	#ifdef MPU_9250
 	unsigned short fifoCnt;
 	inv_error_t result;
 	
@@ -285,9 +275,54 @@ void imu_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 			RCSOFTCHECK(rcl_publish(&imu_publisher, &imu_msg, NULL));
 		}
 	}
+	#endif
+	#ifdef MPU_6050
+	if (mpu.dmpGetCurrentFIFOPacket(fifoBuffer)) {
+		Quaternion q;         // Кватернион
+		VectorInt16 aa;       // Сырые данные акселерометра
+		VectorInt16 aaReal;   // Ускорение без гравитации
+		VectorInt16 gyro;     // Сырые данные гироскопа
+		VectorFloat gravity;  // Вектор гравитации
+	
+		// Получение кватерниона
+		mpu.dmpGetQuaternion(&q, fifoBuffer);
+	
+		// Получение сырых данных гироскопа (угловая скорость)
+		mpu.dmpGetGyro(&gyro, fifoBuffer);
+	
+		// Получение сырых данных акселерометра и гравитации
+		mpu.dmpGetAccel(&aa, fifoBuffer);
+		mpu.dmpGetGravity(&gravity, &q);
+		mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
+	
+		// Заполнение сообщения IMU
+		// Кватернион
+		imu_msg.orientation.w = q.w;
+		imu_msg.orientation.x = q.x;
+		imu_msg.orientation.y = q.y;
+		imu_msg.orientation.z = q.z;
+	
+		// Угловая скорость (в радианах/с)
+		// MPU-6050 по умолчанию ±250°/с, чувствительность 131 LSB/(°/с)
+		imu_msg.angular_velocity.x = (float)gyro.x / 131.0 * PI / 180.0;
+		imu_msg.angular_velocity.y = (float)gyro.y / 131.0 * PI / 180.0;
+		imu_msg.angular_velocity.z = (float)gyro.z / 131.0 * PI / 180.0;
+	
+		// Линейное ускорение (в м/с²)
+		// MPU-6050 по умолчанию ±2g, чувствительность 16384 LSB/g, g ≈ 9.81 м/с²
+		imu_msg.linear_acceleration.x = (float)aaReal.x / 16384.0 * 9.81;
+		imu_msg.linear_acceleration.y = (float)aaReal.y / 16384.0 * 9.81;
+		imu_msg.linear_acceleration.z = (float)aaReal.z / 16384.0 * 9.81;
+	
+		// Установка временной метки
+		set_timestamp(&imu_msg.header.stamp);
+	
+		// Публикация
+		RCSOFTCHECK(rcl_publish(&imu_publisher, &imu_msg, NULL));
+	}
+	#endif
 }
 
-constexpr float RAD_TO_ITER = RAD_TO_DEG * (RANGES_SIZE / 360.0);
 void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
 	if (lidar->dataObtained)
@@ -303,8 +338,6 @@ void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 				if(lidar->intensity[i] < LIDAR_MIN_INTENSITY)
 					continue;
 				#endif
-				// if(lidar->distance[i] >= 32768)
-				// 	continue;
 
 				uint16_t j = round(normalize_angle(lidar->theta[i]) * RAD_TO_ITER);
 				
@@ -323,14 +356,6 @@ void lidar_timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 			
 			RCSOFTCHECK(rcl_publish(&lidar_publisher, &lidar_msg, NULL));
 		}
-	} else {
-		LogMessage logMessage;
-		strcpy(logMessage.func, "lidar_timer_callback()");
-		strcpy(logMessage.file, "microros.cpp");
-		sprintf(logMessage.message, "Skip!");
-		logMessage.level = LogLevel::WARN;
-
-		MicroROSLogger::log(logMessage, false);
 	}
 }
 
@@ -430,6 +455,15 @@ void init_msgs_logger() {
 	log_msg.function.size = 0;
 	log_msg.function.data = (char *)malloc(log_msg.msg.capacity * sizeof(char));
 }
+
+bool isDeviceConnected(uint8_t address) {
+	Wire.beginTransmission(address); // Начинаем передачу на адрес устройства
+	if (Wire.endTransmission() == 0) { // Если устройство ответило (0 - успех)
+	  return true;
+	}
+	return false;
+  }
+  
 
 void MicroRosController::microrosTask(void *pvParameters)
 {
@@ -571,16 +605,12 @@ void MicroRosController::microrosTask(void *pvParameters)
 	init_msgs_logger();
 
 	RCCHECK(rclc_executor_init(&executor, &support.context, 6, &allocator));
-	RCCHECK(rclc_executor_add_subscription(&executor, &cmd_vel_subscriber, &cmd_vel_msg, &cmd_vel_callback, ON_NEW_DATA));
-	RCCHECK(rclc_executor_add_subscription(&executor, &pid_params_subscriber, &pid_params_msg, &pid_params_callback, ON_NEW_DATA));
-	RCCHECK(rclc_executor_add_timer(&executor, &odom_timer));
-	RCCHECK(rclc_executor_add_timer(&executor, &imu_timer));
-	RCCHECK(rclc_executor_add_timer(&executor, &lidar_timer));
 	RCCHECK(rclc_executor_add_timer(&executor, &log_timer));
 
 
-	lidar = new DreameLidar(&Serial2);
+	lidar = new DreameLidar(&LIDAR_SERIAL);
 	xTaskCreate(DreameLidar::lidarTask, "lidar_data_task", 8196, lidar, 1, NULL);
+	RCCHECK(rclc_executor_add_timer(&executor, &lidar_timer));
 
 	INIT_ENCODER_WITH_NAME(LEFT, ENCODER_M1_A, ENCODER_M1_B)
 	INIT_ENCODER_WITH_NAME(RIGHT, ENCODER_M2_A, ENCODER_M2_B)
@@ -588,22 +618,43 @@ void MicroRosController::microrosTask(void *pvParameters)
 	motorA.setPIDConfig(2.0, 0.0, 0.06, 2.25);
 	motorB.setPIDConfig(2.0, 0.0, 0.06, 2.25);
 
-	Wire.begin(22, 23);
-	if (imu.begin() != INV_SUCCESS)
-	{
-		Serial.println("Unable to communicate with MPU-9250");
-		Serial.println("Check connections, and try again.");
-	} else {
-		imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL);
-		imu.setAccelFSR(2);
-		imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT |
-						DMP_FEATURE_GYRO_CAL |
-						DMP_FEATURE_SEND_CAL_GYRO |
-						DMP_FEATURE_SEND_RAW_ACCEL,
-						10);
-		imu.dmpSetOrientation(orientationDefault);
-	}
+	RCCHECK(rclc_executor_add_subscription(&executor, &cmd_vel_subscriber, &cmd_vel_msg, &cmd_vel_callback, ON_NEW_DATA));
+	RCCHECK(rclc_executor_add_subscription(&executor, &pid_params_subscriber, &pid_params_msg, &pid_params_callback, ON_NEW_DATA));
+	RCCHECK(rclc_executor_add_timer(&executor, &odom_timer));
 
+	#ifdef MPU_9250
+	if (Wire.begin() && isDeviceConnected(0x68)) {
+		if (imu.begin() != INV_SUCCESS)
+		{
+			Serial.println("Unable to communicate with MPU-9250");
+			Serial.println("Check connections, and try again.");
+		} else {
+			imu.setSensors(INV_XYZ_GYRO | INV_XYZ_ACCEL);
+			imu.setAccelFSR(2);
+			imu.dmpBegin(DMP_FEATURE_6X_LP_QUAT |
+							DMP_FEATURE_GYRO_CAL |
+							DMP_FEATURE_SEND_CAL_GYRO |
+							DMP_FEATURE_SEND_RAW_ACCEL,
+							10);
+			imu.dmpSetOrientation(orientationDefault);
+
+			RCCHECK(rclc_executor_add_timer(&executor, &imu_timer));
+		}
+	} else {
+		Serial.println("Unable to communicate with I2C");
+	}
+	#endif
+	#ifdef MPU_6050
+	if(Wire.begin()) {
+		//Wire.setClock(1000000UL);   // разгоняем шину на максимум
+		// инициализация DMP
+		mpu.initialize();
+		mpu.dmpInitialize();
+		mpu.setDMPEnabled(true);
+
+		RCCHECK(rclc_executor_add_timer(&executor, &imu_timer));
+	}
+	#endif
 
 	Serial.println("ROS started!");
 	while (true)
@@ -612,3 +663,4 @@ void MicroRosController::microrosTask(void *pvParameters)
 		vTaskDelay(1);
 	}
 }
+

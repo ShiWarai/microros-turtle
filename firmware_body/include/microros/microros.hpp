@@ -19,7 +19,13 @@
 #include <rcl_interfaces/msg/log.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
+#ifdef MPU_9250
 #include <MPU9250-DMP.h>
+#endif
+#ifdef MPU_6050
+#include <I2Cdev.h>
+#include <MPU6050_6Axis_MotionApps20.h>
+#endif
 
 #include "motor_controller/motor_controller.hpp"
 #include "settings/settings.hpp"
