@@ -4,15 +4,6 @@ setlocal EnableDelayedExpansion
 :: Задаем имя образа по умолчанию
 set "IMAGE_NAME=%~1"
 
-:: Определяем IPv4-адрес хоста
-for /f "tokens=2 delims=:" %%i in ('ipconfig ^| findstr /i "IPv4"') do (
-    set "IP=%%i"
-    goto :found_ip
-)
-:found_ip
-set "IP=!IP:~1!"
-echo IP-address: !IP!
-
 :: Указываем путь к локальной папке ros2_ws в текущей директории
 set "LOCAL_PATH=%CD%\ros2_ws"
 

@@ -1,0 +1,20 @@
+slam_toolbox:
+  ros__parameters:
+    mode: mapping
+    odom_frame: "odom"
+    map_frame: "map"
+    base_frame: "base_link"
+    scan_topic: "/lidar"
+    odom_topic: "/odom"
+    
+    transform_publish_period: 0.2
+    map_update_interval: 0.5  # Уменьшено с 1.0 для более частого обновления карты
+    resolution: 0.05
+    min_laser_range: 0.001
+    max_laser_range: 2.0
+    minimum_time_interval: 0.5
+    transform_timeout: 0.5
+    tf_buffer_duration: 60.0
+    free_space_update: true  # Убедитесь, что свободное пространство обновляется
+    minimum_travel_distance: 0.1  # Уменьшите, чтобы карта обновлялась при меньших перемещениях
+    minimum_travel_heading: 0.1  # Уменьшите для учета небольших поворотов
