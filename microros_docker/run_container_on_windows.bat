@@ -21,6 +21,6 @@ if not exist "%LOCAL_PATH%" (
 
 :: Запускаем контейнер с указанным именем образа
 echo Starting Docker container with image: %IMAGE_NAME%
-docker run -it --rm -e DISPLAY=host.docker.internal:0 -v "%LOCAL_PATH%:/ros2_ws" -v "microros_root_data:/root" -p 8888:8888/udp %IMAGE_NAME%
+docker run -it --rm --privileged -e DISPLAY=host.docker.internal:0 -v /dev:/dev -v "%LOCAL_PATH%:/ros2_ws" -v "microros_root_data:/root" -p 8888:8888/udp %IMAGE_NAME%
 
 pause
