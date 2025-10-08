@@ -5,12 +5,15 @@ MotorController::MotorController(L298N &motorDriver, volatile long &encoder_valu
 {
 	pidController = GyverPID(0.0, 0.0, 0.0);
 	pidController.setLimits(-255, 255);
+	pidController.setDirection(0);
+	pidController.setMode(0);
+
 	setEncoderPPR(PPR);
 	
 	setMaxRPM(MAX_RPM);
 }
 
-void MotorController::update(int64_t dt, float correction)
+void MotorController::update(float dt, float correction)
 {
 	if (targetIsChanged) {
 		straight_Kp = 0;
@@ -18,29 +21,29 @@ void MotorController::update(int64_t dt, float correction)
 
 		targetIsChanged = false;
 	} else {
-		straight_Kp = max(-10.0f, min(straight_Kp, 10.0f));
+		straight_Kp = max(-20.0f, min(straight_Kp, 20.0f));
 	}
+
+	straight_Kp += correction;
 
 	long int encNow = getEncoderValue();
 	long int encDelta = encNow - encPrev;
 	encPrev = encNow;
 
-	measuredRPM = ((float)encDelta) / ((float)dt) * ticksPerMicroSecToRPM;
+	measuredRPM = ((float)encDelta) / ((float)dt) * ticksPerMillisecToRPM;
 
-	straight_Kp += correction;
-
-	pidController.setpoint = targetRPM + straight_Kp;
+	pidController.setpoint = targetRPM;
 	pidController.input = measuredRPM;
-	pidController.setDirection(0);
 	pidController.setDt(dt);
 
-	pidPWM = pidController.getResult();
+	pidtype pid = pidController.getResult() + straight_Kp;
+	pidPWM = pid + Kff * targetRPM;
 
 	setPWM(pidPWM);
 
 	// char str[128];
-	// sprintf(str, "C: %.2f, %.2f, %.2f, %.2f", measuredRPM, targetRPM, pidPWM, straight_Kp);
-	// MicroROSLogger::log(str, "update()", "motor_controller.cpp", LogLevel::INFO, true);
+	// sprintf(str, "C: %.2f, T: %.2f, PID: %.2f, pidPWM: %.2f, K_p: %.2f, Kff: %.2f", measuredRPM, targetRPM, pid, pidPWM, straight_Kp, Kff);
+	// MicroROSLogger::log(str, "update()", "motor_controller.cpp", LogLevel::INFO, false);
 }
 
 void MotorController::setPWM(float value)
@@ -83,7 +86,7 @@ void MotorController::setEncoderPPR(float ppr)
 		return;
 
 	encoderPPR = ppr;
-	ticksPerMicroSecToRPM = 1e6 * 60.0 / ppr;
+	ticksPerMillisecToRPM = 1e3 * 60.0 / ppr;
 }
 
 float MotorController::getEncoderPPR()
@@ -116,11 +119,12 @@ float MotorController::getTargetRPM()
 	return targetRPM;
 }
 
-void MotorController::setPIDConfig(float kp, float ki, float kd)
+void MotorController::setPIDConfig(float kp, float ki, float kd, float kff)
 {
 	Kp = kp;
 	Ki = ki;
 	Kd = kd;
+	Kff = kff;
 	
 	pidController.Kp = kp;
 	pidController.Ki = ki;
@@ -129,17 +133,17 @@ void MotorController::setPIDConfig(float kp, float ki, float kd)
 
 void MotorController::setPIDKp(float kp)
 {
-	setPIDConfig(kp, getPIDKi(), getPIDKd());
+	setPIDConfig(kp, getPIDKi(), getPIDKd(), getPIDKff());
 }
 
 void MotorController::setPIDKi(float ki)
 {
-	setPIDConfig(getPIDKp(), ki, getPIDKd());
+	setPIDConfig(getPIDKp(), ki, getPIDKd(), getPIDKff());
 }
 
 void MotorController::setPIDKd(float kd)
 {
-	setPIDConfig(getPIDKp(), getPIDKi(), kd);
+	setPIDConfig(getPIDKp(), getPIDKi(), Kd, getPIDKff());
 }
 
 float MotorController::getPIDKp()
@@ -155,6 +159,11 @@ float MotorController::getPIDKi()
 float MotorController::getPIDKd()
 {
 	return Kd;
+}
+
+float MotorController::getPIDKff()
+{
+	return Kff;
 }
 
 bool MotorController::setTargetRPM(float rpm)
@@ -181,4 +190,27 @@ void MotorController::reverseMotor(bool reversed)
 long int MotorController::getEncoderValue()
 {
 	return encoder;
+}
+
+float SpeedMatchingRegulator::compute(float leftSpeed, float rightSpeed, float leftTargetSpeed, float rightTargetSpeed) {
+	float koef;
+
+	if(rightTargetSpeed == 0 && leftTargetSpeed == 0)
+		return 0;
+	else if(rightTargetSpeed == 0)
+		return 0;
+	else if(leftTargetSpeed == 0)
+		return 0;
+	else
+		koef = leftTargetSpeed / rightTargetSpeed;
+
+	return kp_ * (leftSpeed - rightSpeed * koef);
+}
+
+float SpeedMatchingRegulator::getKp() {
+	return kp_;
+}
+
+void SpeedMatchingRegulator::setKp(float Kp) {
+	kp_ = Kp;
 }

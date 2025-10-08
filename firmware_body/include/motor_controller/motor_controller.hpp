@@ -7,28 +7,19 @@
 #include <L298NX2.h>
 
 #include "encoder.hpp"
-
 #include "microros/microros_logger.hpp"
 
 #define MAX_RPM 300
 
-class SpeedMatchingController {
-	public:
-		SpeedMatchingController(float kp) : kp_(kp) {}
+class SpeedMatchingRegulator {
+public:
+	SpeedMatchingRegulator(float kp) : kp_(kp) {}
 
-		float compute(float leftSpeed, float rightSpeed, float leftTargetSpeed, float rightTargetSpeed) {
-			float koef;
-
-			if(rightTargetSpeed == 0)
-				koef = (leftTargetSpeed == 0) ? 0 : INFINITY;
-			else
-				koef = leftTargetSpeed / rightTargetSpeed;
-
-			return kp_ * (leftSpeed - rightSpeed * koef);
-		}
-
-	private:
-		float kp_;
+	float compute(float leftSpeed, float rightSpeed, float leftTargetSpeed, float rightTargetSpeed);
+	float getKp();
+	void setKp(float Kp);
+private:
+	float kp_;
 };
 
 class MotorController
@@ -37,12 +28,12 @@ public:
 	MotorController(L298N& motorDriver, volatile long& encoder_value, float PPR);
 
 	bool setTargetRPM(float rpm);
-	void update(int64_t dt, float correction = 0);
+	void update(float dt, float correction = 0);
 	float getShaftAngle();
 	void reverseMotor(bool reversed);
 	void setMaxRPM(float rpm);
 	void setEncoderPPR(float ppr);
-	void setPIDConfig(float kp, float ki, float kd);
+	void setPIDConfig(float kp, float ki, float kd, float kff);
 	void setPIDKp(float kp);
 	void setPIDKi(float ki);
 	void setPIDKd(float kd);
@@ -58,6 +49,7 @@ public:
 	float getPIDKp();
 	float getPIDKi();
 	float getPIDKd();
+	float getPIDKff();
 	long int getEncoderValue();
 
 private:
@@ -66,9 +58,10 @@ private:
 	volatile long &encoder;
 
 	GyverPID pidController;
-	double Kp = 0;
-	double Ki = 0;
-	double Kd = 0;
+	float Kp = 0;
+	float Ki = 0;
+	float Kd = 0;
+	float Kff = 0;
 	float straight_Kp = 0;
 
 	float pidPWM = 0;
@@ -81,9 +74,9 @@ private:
 	float encoderPPR;
 	float encoderTPR;
 	float encoderTPR_reciprocal;
-	float ticksPerMicroSecToRPM;
+	float ticksPerMillisecToRPM;
 
-	long int encPrev = 0;
+	long encPrev = 0;
 	bool motorReversed = false;
 	unsigned long tickSampleTimePrev = 0;
 };

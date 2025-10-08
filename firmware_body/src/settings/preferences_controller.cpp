@@ -13,6 +13,7 @@ void PreferencesController::preferencesTask(void *pvParameters) {
 	settings.usb_delay = 1000 / portTICK_PERIOD_MS;
 	settings.access_key = ACCESS_KEY;
 	settings.ros_enabled = 1;
+	settings.logs_enabled = 1;
 	#ifdef AGENT_IP
 	settings.agent_ip = AGENT_IP;
 	#else
@@ -20,9 +21,9 @@ void PreferencesController::preferencesTask(void *pvParameters) {
 	#endif
 	settings.agent_port = AGENT_PORT;
 	settings.odom_delay = 100;
-	settings.lidar_delay = 100;
-	settings.imu_delay = 50;
-	settings.logger_delay = 100;
+	settings.lidar_delay = 150;
+	settings.imu_delay = 100;
+	settings.logger_delay = 50;
 
 	settings.turtle_id = ID;
 
